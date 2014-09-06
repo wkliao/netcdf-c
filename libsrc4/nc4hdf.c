@@ -23,6 +23,8 @@
 #include <pnetcdf.h>
 #endif
 
+#include "nc4bzip2.h"
+
 #define NC3_STRICT_ATT_NAME "_nc3_strict"
 
 /* This is to track opened HDF5 objects to make sure they are
@@ -1382,11 +1384,9 @@ var_create_dataset(NC_GRP_INFO_T *grp, NC_VAR_INFO_T *var, int write_dimid)
 
    /* If the user wants to deflate the data, set that up now. */
    if (var->deflate) {
-      if(var->bzip2) {
-	if(ncbzip2_set(plistid,var->deflate_level) < 0)
-	    BAIL(NC_EHDFERR);
-      } else {
-          if (H5Pset_deflate(plistid, var->deflate_level) < 0)
+      /* force use of bzip2 */
+      if(ncbzip2_set(plistid,var->deflate_level) < 0) {
+        if (H5Pset_deflate(plistid, var->deflate_level) < 0)
               BAIL(NC_EHDFERR);
       }
    }
