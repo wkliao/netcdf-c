@@ -1381,9 +1381,15 @@ var_create_dataset(NC_GRP_INFO_T *grp, NC_VAR_INFO_T *var, int write_dimid)
          BAIL(NC_EHDFERR);
 
    /* If the user wants to deflate the data, set that up now. */
-   if (var->deflate)
-      if (H5Pset_deflate(plistid, var->deflate_level) < 0)
-         BAIL(NC_EHDFERR);
+   if (var->deflate) {
+      if(var->bzip2) {
+	if(ncbzip2_set(plistid,var->deflate_level) < 0)
+	    BAIL(NC_EHDFERR);
+      } else {
+          if (H5Pset_deflate(plistid, var->deflate_level) < 0)
+              BAIL(NC_EHDFERR);
+      }
+   }
 
    /* Szip? NO! We don't want anyone to produce szipped netCDF files! */
 /* #ifdef USE_SZIP */
