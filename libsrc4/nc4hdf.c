@@ -23,7 +23,7 @@
 #include <pnetcdf.h>
 #endif
 
-#include "nc4bzip2.h"
+#include "nc4compress.h"
 
 #define NC3_STRICT_ATT_NAME "_nc3_strict"
 
@@ -1383,21 +1383,28 @@ var_create_dataset(NC_GRP_INFO_T *grp, NC_VAR_INFO_T *var, int write_dimid)
          BAIL(NC_EHDFERR);
 
    /* If the user wants to deflate the data, set that up now. */
-   if (var->deflate) {
-      /* force use of bzip2 */
-      if(ncbzip2_set(plistid,var->deflate_level) < 0) {
-        if (H5Pset_deflate(plistid, var->deflate_level) < 0)
+   if (var->algorithm > 0) {
+      switch (var->algorithm) {
+      case H5Z_FILTER_DEFLATE:
+        if (H5Pset_deflate(plistid, var->compress_params.level) < 0)
               BAIL(NC_EHDFERR);
+	break;
+      case H5Z_FILTER_BZIP2:
+          if(nccompress_set(var->algorithm,plistid,&var->compress_params) < 0)
+              BAIL(NC_EHDFERR);
+	  break;
+      /* Szip? NO! We don't want anyone to produce szipped netCDF files! */
+/*      case H5Z_FILTER_SZIP:
+      if (var->compress_params.szip.options_mask)
+       if (H5Pset_szip(plistid, var->compress_params.szip.options_mask, var->compress_params.szip.bits_per_pixel) < 0) 
+          BAIL(NC_EHDFERR); 
+	  break;
+*/
+      default:
+          BAIL(NC_EHDFERR);	  
       }
    }
 
-   /* Szip? NO! We don't want anyone to produce szipped netCDF files! */
-/* #ifdef USE_SZIP */
-/*    if (var->options_mask) */
-/*       if (H5Pset_szip(plistid, var->options_mask, var->bits_per_pixel) < 0) */
-/*          BAIL(NC_EHDFERR); */
-/* #endif */
-  
    /* If the user wants to fletcher error correcton, set that up now. */
    if (var->fletcher32)
       if (H5Pset_fletcher32(plistid) < 0)
@@ -1420,8 +1427,8 @@ var_create_dataset(NC_GRP_INFO_T *grp, NC_VAR_INFO_T *var, int write_dimid)
        * has not specified chunksizes, use contiguous variable for
        * better performance. */
 
-      if(!var->shuffle && !var->deflate && !var->options_mask &&
-          !var->fletcher32 && (var->chunksizes == NULL || !var->chunksizes[0])) {
+      if(!var->shuffle && !var->algorithm && !var->fletcher32
+         && (var->chunksizes == NULL || !var->chunksizes[0])) {
 #ifdef USE_HDF4
       NC_HDF5_FILE_INFO_T *h5 = grp->nc4_info;
       if(h5->hdf4 || !unlimdim)
