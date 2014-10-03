@@ -1384,7 +1384,7 @@ var_create_dataset(NC_GRP_INFO_T *grp, NC_VAR_INFO_T *var, int write_dimid)
 
    /* If the user wants to deflate the data, set that up now. */
    if (strlen(var->algorithm) > 0) {
-      if(nccompress_set(var->algorithm,plistid,&var->compress_params) != NC_NOERR)
+      if(nccompress_set(var->algorithm,plistid,var->compress_params) != NC_NOERR)
 	 BAIL(NC_EHDFERR);
    }
 
