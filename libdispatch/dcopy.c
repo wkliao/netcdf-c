@@ -291,7 +291,7 @@ nc_copy_var(int ncid_in, int varid_in, int ncid_out)
       return retval;
    if ((retval = nc_inq_format(ncid_out, &dest_format)))
       return retval;
-   if ((dest_format == NC_FORMAT_CLASSIC || dest_format == NC_FORMAT_64BIT) &&
+   if ((dest_format == NC_FORMAT_CLASSIC || dest_format == NC_FORMAT_CDF2) &&
        src_format == NC_FORMAT_NETCDF4 && xtype > NC_DOUBLE)
       return NC_ENOTNC4;
 

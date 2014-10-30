@@ -168,13 +168,11 @@ NC_check_file_type(const char *path, int use_parallel, void *mpi_info,
             *version = 1; /* netcdf classic version 1 */
          else if(magic[3] == '\002')
             *version = 2; /* netcdf classic version 2 */
-#ifdef USE_PNETCDF
          else if(magic[3] == '\005')
-            *version = 5; /* pnetcdf file */
-#endif
+            *version = 5; /* netcdf classic version 5 */
 	 else
 	    {status = NC_ENOTNC; goto done;}
-	 *model = (use_parallel || *version == 5)?NC_DISPATCH_NC5:NC_DISPATCH_NC3;
+	 *model = (use_parallel) ? NC_DISPATCH_NC5 : NC_DISPATCH_NC3;
      } else
         {status = NC_ENOTNC; goto done;}
 
@@ -196,7 +194,8 @@ and attributes.
 \param cmode The creation mode flag. The following flags are
 available: NC_NOCLOBBER (do not overwrite existing file), NC_SHARE
 (limit write caching - netcdf classic files onlt), NC_64BIT_OFFSET
-(create 64-bit offset file), NC_NETCDF4 (create netCDF-4/HDF5 file),
+(create 64-bit offset file), NC_64BIT_DATA (create CDF-5 file),
+NC_NETCDF4 (create netCDF-4/HDF5 file),
 NC_CLASSIC_MODEL (enforce netCDF classic mode on netCDF-4/HDF5
 files), NC_DISKLESS (store data only in memory), NC_MMAP (use MMAP
 for NC_DISKLESS), and NC_WRITE.
@@ -226,6 +225,10 @@ Setting NC_64BIT_OFFSET causes netCDF to create a 64-bit offset format
 file, instead of a netCDF classic format file. The 64-bit offset
 format imposes far fewer restrictions on very large (i.e. over 2 GB)
 data files. See Large File Support.
+
+Setting NC_64BIT_DATA causes netCDF to create a CDF-5 file format that
+supports large files (i.e. over 2GB) and large variables (over 2B
+array elements.). See Large File Support.
 
 A zero value (defined for convenience as NC_CLOBBER) specifies the
 default behavior: overwrite any existing dataset with the same file
@@ -449,6 +452,10 @@ int
 nc__create(const char *path, int cmode, size_t initialsz,
 	   size_t *chunksizehintp, int *ncidp)
 {
+   /* this API is for non-parallel access, should we check for illegal cmode
+    * flags, such as NC_PNETCDF, NC_MPIIO, or NC_MPIPOSIX, before entering
+    * NC_create()? Note nc_create_par() also calls NC_create().
+    */
    return NC_create(path, cmode, initialsz, 0, 
 		    chunksizehintp, 0, NULL, ncidp);
 
@@ -586,6 +593,10 @@ if (status != NC_NOERR) handle_error(status);
 int
 nc_open(const char *path, int mode, int *ncidp)
 {
+   /* this API is for non-parallel access, should we check for illegal cmode
+    * flags, such as NC_PNETCDF, NC_MPIIO, or NC_MPIPOSIX, before entering
+    * NC_open()? Note nc_open_par() also calls NC_open().
+    */
    return NC_open(path, mode, 0, NULL, 0, NULL, ncidp);
 }
 
@@ -644,6 +655,10 @@ int
 nc__open(const char *path, int mode,
 	 size_t *chunksizehintp, int *ncidp)
 {
+   /* this API is for non-parallel access, should we check for illegal cmode
+    * flags, such as NC_PNETCDF, NC_MPIIO, or NC_MPIPOSIX, before entering
+    * NC_open()? Note nc_open_par() also calls NC_open().
+    */
    return NC_open(path, mode, 0, chunksizehintp, 0, 
 		  NULL, ncidp);
 }
@@ -1265,7 +1280,7 @@ This function returns the (rarely needed) format version.
 nc_create().
 
 \param formatp Pointer to location for returned format version, one of
-NC_FORMAT_CLASSIC, NC_FORMAT_64BIT, NC_FORMAT_NETCDF4,
+NC_FORMAT_CLASSIC, NC_FORMAT_CDF2, NC_FORMAT_CDF5, NC_FORMAT_NETCDF4,
 NC_FORMAT_NETCDF4_CLASSIC.
 
 \returns ::NC_NOERR No error.
@@ -1447,9 +1462,15 @@ int
 nc_inq_type(int ncid, nc_type xtype, char *name, size_t *size)
 {
    NC* ncp;
+   int format, ub=ATOMICTYPEMAX;
+
+   /* CDF-1 and CDF-2 support types up tp NC_STRING */
+   nc_inq_format(ncid, &format);
+   if (format != NC_FORMAT_CDF5) ub = NC_STRING;
+
    /* For compatibility, we need to allow inq about
       atomic types, even if ncid is ill-defined */
-   if(xtype <= ATOMICTYPEMAX) {
+   if(xtype <= ub) {
       if(xtype <= NC_NAT) return NC_EBADTYPE;
       if(name) strncpy(name,NC_atomictypename(xtype),NC_MAX_NAME);
       if(size) *size = NC_atomictypelen(xtype);
@@ -1561,8 +1582,10 @@ NC_create(const char *path, int cmode, size_t initialsz,
 	    model = NC_DISPATCH_NC4;
 	    break;
 #endif
-	 case NC_FORMAT_64BIT:
+	 case NC_FORMAT_CDF2:
 	    xcmode |= NC_64BIT_OFFSET;
+	 case NC_FORMAT_CDF5:
+	    xcmode |= NC_64BIT_DATA;
 	    /* fall thru */
 	 case NC_FORMAT_CLASSIC:
 	 default:
@@ -1695,41 +1718,33 @@ NC_open(const char *path, int cmode,
 	return stat;
    }
 
-#if 1
    if(model == 0) {
 	fprintf(stderr,"Model != 0\n");
 	return NC_ENOTNC;
    }
-#else
-Not longer needed
-   /* Look to the incoming cmode for hints */
-   if(model == 0) {
-      if(cmode & NC_PNETCDF) model = NC_DISPATCH_NC5;
-      else if(cmode & NC_NETCDF4) model = NC_DISPATCH_NC4;
-    }
-   if(model == 0) model = NC_DISPATCH_NC3; /* final default */
-#endif
 
    /* Force flag consistentcy */
    if(model & NC_DISPATCH_NC4)
       cmode |= NC_NETCDF4;
    else if(model & NC_DISPATCH_NC3) {
-      cmode &= ~NC_NETCDF4; /* must be netcdf-3 */
+      cmode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
       if(version == 2) cmode |= NC_64BIT_OFFSET;
+      else if(version == 5) cmode |= NC_64BIT_DATA;
    } else if(model & NC_DISPATCH_NC5) {
-#if 0
-It appears that pnetcdf can read NC_64_BIT_OFFSET
-      cmode &= ~(NC_NETCDF4 | NC_64BIT_OFFSET); /* must be pnetcdf */ 
-#else
-      cmode &= ~(NC_NETCDF4);
-#endif
+      cmode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
+      if(version == 2) cmode |= NC_64BIT_OFFSET;
+      else if(version == 5) cmode |= NC_64BIT_DATA;
       cmode |= NC_PNETCDF;
    }
 
    if((cmode & NC_MPIIO && cmode & NC_MPIPOSIX))
       return  NC_EINVAL;
 
-   /* override overrides any other table choice */
+   if((cmode & NC_64BIT_OFFSET && cmode & NC_64BIT_DATA))
+      /* cannot have both CDF-2 and CDF-5 */
+      return  NC_EINVAL;
+
+   /* override any other table choice */
    dispatcher = NC_get_dispatch_override();
    if(dispatcher != NULL) goto havetable;
 

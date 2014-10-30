@@ -66,4 +66,8 @@ typedef unsigned long long ulonglong;
 typedef unsigned int uint;
 #endif
 
+#ifndef HAVE_USHORT
+typedef unsigned short ushort;
+#endif
+
 #endif /* NCCONFIGURE_H */

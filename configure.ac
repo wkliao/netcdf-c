@@ -766,7 +766,7 @@ AC_STRUCT_ST_BLKSIZE
 UD_CHECK_IEEE
 AC_TYPE_SIZE_T
 AC_TYPE_OFF_T
-AC_CHECK_TYPES([ssize_t, ptrdiff_t, uchar, longlong])
+AC_CHECK_TYPES([ssize_t, ptrdiff_t, uchar, longlong, ushort, uint, int64, uint64])
 AC_C_CHAR_UNSIGNED
 AC_C_BIGENDIAN
 AC_CHECK_SIZEOF(short)
@@ -777,6 +777,18 @@ AC_CHECK_SIZEOF(float)
 AC_CHECK_SIZEOF(double)
 AC_CHECK_SIZEOF(off_t)
 AC_CHECK_SIZEOF(size_t)
+AC_CHECK_SIZEOF(unsigned long long)
+
+if test "$ac_cv_type_ushort" = yes ; then
+   AC_CHECK_SIZEOF(ushort)
+else
+   AC_CHECK_SIZEOF(unsigned short int)
+fi
+if test "$ac_cv_type_uint" = yes ; then
+   AC_CHECK_SIZEOF(uint)
+else
+   AC_CHECK_SIZEOF(unsigned int)
+fi
 
 if test "x$enable_netcdf_4" = xyes || test "x$enable_dap" = xyes; then
    AC_SEARCH_LIBS([deflate], [zlibwapi zlibstat zlib zlib1 z], [], [

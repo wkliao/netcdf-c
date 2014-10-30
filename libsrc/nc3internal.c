@@ -48,8 +48,10 @@ new_NC3INFO(const size_t *chunkp)
 	NC3_INFO *ncp;
 	ncp = (NC3_INFO*)calloc(1,sizeof(NC3_INFO));
 	if(ncp == NULL) return ncp;
+/* delay this setting
 	ncp->xsz = MIN_NC_XSZ;
 	assert(ncp->xsz == ncx_len_NC(ncp,0));
+*/
         ncp->chunk = chunkp != NULL ? *chunkp : NC_SIZEHINT_DEFAULT;
 	return ncp;
 }
@@ -87,18 +89,16 @@ NCcktype()
  * Sense of the return is changed.
  */
 int
-nc_cktype(nc_type type)
+nc_cktype(int mode, nc_type type)
 {
-	switch((int)type){
-	case NC_BYTE:
-	case NC_CHAR:
-	case NC_SHORT:
-	case NC_INT:
-	case NC_FLOAT:
-	case NC_DOUBLE:
-		return(NC_NOERR);
-	}
-	return(NC_EBADTYPE);
+    if (mode & NC_64BIT_OFFSET) { /* CDF-1 and CDF-2 format */
+        if (type >= NC_BYTE && type <= NC_DOUBLE) return NC_NOERR;
+	return NC_EBADTYPE;
+    }
+    else {  /* CDF-5 format */
+        if (type >= NC_BYTE && type <= NC_STRING) return NC_NOERR;
+	return NC_EBADTYPE;
+    }
 }
 
 
@@ -112,6 +112,7 @@ ncx_howmany(nc_type type, size_t xbufsize)
 	switch(type){
 	case NC_BYTE:
 	case NC_CHAR:
+	case NC_UBYTE:
 		return xbufsize;
 	case NC_SHORT:
 		return xbufsize/X_SIZEOF_SHORT;
@@ -121,6 +122,14 @@ ncx_howmany(nc_type type, size_t xbufsize)
 		return xbufsize/X_SIZEOF_FLOAT;
 	case NC_DOUBLE:
 		return xbufsize/X_SIZEOF_DOUBLE;
+	case NC_USHORT:
+		return xbufsize/X_SIZEOF_USHORT;
+	case NC_UINT:
+		return xbufsize/X_SIZEOF_UINT;
+	case NC_INT64:
+		return xbufsize/X_SIZEOF_LONGLONG;
+	case NC_UINT64:
+		return xbufsize/X_SIZEOF_ULONGLONG;
 	default:
 	        assert("ncx_howmany: Bad type" == 0);
 		return(0);
@@ -151,7 +160,7 @@ NC_begins(NC3_INFO* ncp,
 	if(r_align == NC_ALIGN_CHUNK)
 		r_align = ncp->chunk;
 
-	if (fIsSet(ncp->flags, NC_64BIT_OFFSET)) {
+	if (fIsSet(ncp->flags, NC_64BIT_OFFSET) || fIsSet(ncp->flags, NC_64BIT_DATA)) {
 	  sizeof_off_t = 8;
 	} else {
 	  sizeof_off_t = 4;
@@ -321,25 +330,34 @@ read_numrecs(NC3_INFO *ncp)
 {
 	int status = NC_NOERR;
 	const void *xp = NULL;
-	size_t nrecs = NC_get_numrecs(ncp);
+	size_t new_nrecs, old_nrecs = NC_get_numrecs(ncp);
+	size_t nc_numrecs_extent=4; /* CDF-1 and CDF-2 */
 
 	assert(!NC_indef(ncp));
 
+	if (fIsSet(ncp->flags, NC_64BIT_DATA))
+		nc_numrecs_extent = 8; /* CDF-5 */
+
 #define NC_NUMRECS_OFFSET 4
-#define NC_NUMRECS_EXTENT 4
 	status = ncio_get(ncp->nciop,
-		 NC_NUMRECS_OFFSET, NC_NUMRECS_EXTENT, 0, (void **)&xp);
+		 NC_NUMRECS_OFFSET, nc_numrecs_extent, 0, (void **)&xp);
 					/* cast away const */
 	if(status != NC_NOERR)
 		return status;
 
-	status = ncx_get_size_t(&xp, &nrecs);
+	if (fIsSet(ncp->flags, NC_64BIT_DATA)) {
+		long long tmp=0;
+		status = ncx_get_int64(&xp, &tmp);
+		new_nrecs = tmp;
+        }
+	else
+		status = ncx_get_size_t(&xp, &new_nrecs);
 
 	(void) ncio_rel(ncp->nciop, NC_NUMRECS_OFFSET, 0);
 
-	if(status == NC_NOERR)
+	if(status == NC_NOERR && old_nrecs != new_nrecs)
 	{
-		NC_set_numrecs(ncp, nrecs);
+		NC_set_numrecs(ncp, new_nrecs);
 		fClr(ncp->flags, NC_NDIRTY);
 	}
 
@@ -356,18 +374,25 @@ write_numrecs(NC3_INFO *ncp)
 {
 	int status = NC_NOERR;
 	void *xp = NULL;
+	size_t nc_numrecs_extent=4; /* CDF-1 and CDF-2 */
 
 	assert(!NC_readonly(ncp));
 	assert(!NC_indef(ncp));
 
+	if (fIsSet(ncp->flags, NC_64BIT_DATA))
+		nc_numrecs_extent = 8; /* CDF-5 */
+
 	status = ncio_get(ncp->nciop,
-		 NC_NUMRECS_OFFSET, NC_NUMRECS_EXTENT, RGN_WRITE, &xp);
+		 NC_NUMRECS_OFFSET, nc_numrecs_extent, RGN_WRITE, &xp);
 	if(status != NC_NOERR)
 		return status;
 
 	{
 		const size_t nrecs = NC_get_numrecs(ncp);
-		status = ncx_put_size_t(&xp, &nrecs);
+		if (fIsSet(ncp->flags, NC_64BIT_DATA))
+			status = ncx_put_int64(&xp, nrecs);
+		else
+			status = ncx_put_size_t(&xp, &nrecs);
 	}
 
 	(void) ncio_rel(ncp->nciop, NC_NUMRECS_OFFSET, RGN_MODIFIED);
@@ -667,7 +692,11 @@ NC_check_vlens(NC3_INFO *ncp)
     if(ncp->vars.nelems == 0) 
 	return NC_NOERR;
 
-    if ((ncp->flags & NC_64BIT_OFFSET) && sizeof(off_t) > 4) {
+    if (ncp->flags & NC_64BIT_DATA) {
+	/* CDF5 format allows many large vars */
+        return NC_NOERR;
+    }
+    else if ((ncp->flags & NC_64BIT_OFFSET) && sizeof(off_t) > 4) {
 	/* CDF2 format and LFS */
 	vlen_max = X_UINT_MAX - 3; /* "- 3" handles rounded-up size */
     } else {
@@ -954,14 +983,21 @@ NC3_create(const char *path, int ioflags,
 	assert(nc3->flags == 0);
 
 	/* Apply default create format. */
-	if (nc_get_default_format() == NC_FORMAT_64BIT)
+	if (nc_get_default_format() == NC_FORMAT_CDF2)
 	  ioflags |= NC_64BIT_OFFSET;
+	else if (nc_get_default_format() == NC_FORMAT_CDF5)
+	  ioflags |= NC_64BIT_DATA;
 
+	nc3->xsz = MIN_NC_XSZ;
 	if (fIsSet(ioflags, NC_64BIT_OFFSET)) {
-	  fSet(nc3->flags, NC_64BIT_OFFSET);
-	  sizeof_off_t = 8;
+		fSet(nc3->flags, NC_64BIT_OFFSET);
+		sizeof_off_t = 8;
+	} else if (fIsSet(ioflags, NC_64BIT_DATA)) {
+		fSet(nc3->flags, NC_64BIT_DATA);
+		sizeof_off_t = 8;
+		nc3->xsz = MIN_NC5_XSZ; /* CDF-5 has minimum 16 extra bytes */
 	} else {
-	  sizeof_off_t = 4;
+		sizeof_off_t = 4;
 	}
 
 	assert(nc3->xsz == ncx_len_NC(nc3,sizeof_off_t));
@@ -1021,7 +1057,7 @@ unwind_alloc:
 /* This function sets a default create flag that will be logically
    or'd to whatever flags are passed into nc_create for all future
    calls to nc_create.
-   Valid default create flags are NC_64BIT_OFFSET, NC_CLOBBER,
+   Valid default create flags are NC_64BIT_OFFSET, NC_64BIT_DATA, NC_CLOBBER,
    NC_LOCK, NC_SHARE. */
 int
 nc_set_default_format(int format, int *old_formatp)
@@ -1032,11 +1068,12 @@ nc_set_default_format(int format, int *old_formatp)
 
     /* Make sure only valid format is set. */
 #ifdef USE_NETCDF4
-    if (format != NC_FORMAT_CLASSIC && format != NC_FORMAT_64BIT &&
+    if (format != NC_FORMAT_CLASSIC && format != NC_FORMAT_CDF2 &&
 	format != NC_FORMAT_NETCDF4 && format != NC_FORMAT_NETCDF4_CLASSIC)
       return NC_EINVAL;
 #else
-    if (format != NC_FORMAT_CLASSIC && format != NC_FORMAT_64BIT)
+    if (format != NC_FORMAT_CLASSIC && format != NC_FORMAT_CDF2 &&
+        format != NC_FORMAT_CDF5)
       return NC_EINVAL;
 #endif
     default_create_format = format;
@@ -1528,10 +1565,14 @@ NC3_inq_format(int ncid, int *formatp)
 		return status;
 	nc3 = NC3_DATA(nc);
 
-	/* only need to check for netCDF-3 variants, since this is never called for netCDF-4 
-	   files */
-	*formatp = fIsSet(nc3->flags, NC_64BIT_OFFSET) ? NC_FORMAT_64BIT 
-	    : NC_FORMAT_CLASSIC; 
+	/* only need to check for netCDF-3 variants, since this is never
+	   called for netCDF-4 files */
+	if (fIsSet(nc3->flags, NC_64BIT_DATA))
+		*formatp = NC_FORMAT_CDF5;
+	else if (fIsSet(nc3->flags, NC_64BIT_OFFSET))
+		*formatp = NC_FORMAT_CDF2;
+	else
+		*formatp = NC_FORMAT_CLASSIC; 
 	return NC_NOERR;
 }
 

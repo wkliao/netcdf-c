@@ -4,19 +4,17 @@
 
    Test small files.
 
-   $Id: tst_small.c,v 1.15 2008/10/20 01:48:08 ed Exp $
+   $Id: tst_small.c 2796 2014-10-28 03:40:29Z wkliao $
 */
 
+#include <mpi.h>
 #include <nc_tests.h>
 #include <netcdf.h>
+#include <netcdf_par.h>
 
-/* Test everything for classic and 64-bit offsetfiles. If netcdf-4 is
+/* Test everything for classic, 64-bit offset, 64-bit data files. If netcdf-4 is
  * included, that means another whole round of testing. */
-#ifdef USE_NETCDF4
-#define NUM_FORMATS (4)
-#else
-#define NUM_FORMATS (2)
-#endif
+#define NUM_FORMATS (5)
 
 #define ATT_NAME "Atom"
 #define MAX_LEN 7   
@@ -41,13 +39,21 @@ test_small_atts(const char *testfile)
 	 strncpy(att, source, t);
 	 
 	 /* Create a file with one attribute. */
+#ifdef TEST_PNETCDF
+         if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
 	 if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
 	 if (nc_put_att_text(ncid, NC_GLOBAL, ATT_NAME, t + 1, att)) ERR;
 	 if (f && nc_set_fill(ncid, NC_NOFILL, NULL)) ERR;
 	 if (nc_close(ncid)) ERR;
 	 
 	 /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+         if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
 	 if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
 	 if (nc_inq(ncid, &ndims, &nvars, &natts, &unlimdimid)) ERR;
 	 if (ndims != 0 && nvars != 0 && natts != 1 && unlimdimid != -1) ERR;
 	 if (nc_inq_attlen(ncid, NC_GLOBAL, ATT_NAME, &len_in)) ERR;
@@ -89,7 +95,11 @@ test_small_unlim(const char *testfile)
    
    /* Create a file with two dimensions, one unlimited, and one
     * var, and a global att. */
+#ifdef TEST_PNETCDF
+   if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
    if (nc_def_dim(ncid, DIM1_NAME, NC_UNLIMITED, dimids)) ERR;
    if (nc_def_dim(ncid, DIM2_NAME, STR_LEN, &dimids[1])) ERR;
    if (nc_def_var(ncid, VAR_NAME, NC_CHAR, 2, dimids, &varid)) ERR;
@@ -107,7 +117,11 @@ test_small_unlim(const char *testfile)
    if (nc_close(ncid)) ERR;
    
    /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+   if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
    if (nc_inq(ncid, &ndims, &nvars, &natts, &unlimdimid)) ERR;
    if (ndims != 2 && nvars != 1 && natts != 0 && unlimdimid != 0) ERR;
    if (nc_get_var_text(ncid, varid, (char *)data_in)) ERR;
@@ -134,7 +148,11 @@ test_small_fixed(const char *testfile)
    
    /* Create a file with two dimensions, one unlimited, and one
     * var, and a global att. */
+#ifdef TEST_PNETCDF
+   if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
    if (nc_def_dim(ncid, DIM1_NAME, NUM_VALS, dimids)) ERR;
    if (nc_def_dim(ncid, DIM2_NAME, STR_LEN, &dimids[1])) ERR;
    if (nc_def_var(ncid, VAR_NAME, NC_CHAR, NDIMS, dimids, &varid)) ERR;
@@ -152,7 +170,11 @@ test_small_fixed(const char *testfile)
    if (nc_close(ncid)) ERR;
    
    /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+   if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
    if (nc_inq(ncid, &ndims, &nvars, &natts, &unlimdimid)) ERR;
    if (ndims != 2 && nvars != 1 && natts != 0 && unlimdimid != -1) ERR;
    if (nc_get_var_text(ncid, varid, (char *)data_in)) ERR;
@@ -172,7 +194,11 @@ test_small_one(const char *testfile)
    size_t start[NDIMS], count[NDIMS];
 
    /* Create a file with one ulimited dimensions, and one var. */
+#ifdef TEST_PNETCDF
+   if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
    if (nc_def_dim(ncid, DIM1_NAME, NC_UNLIMITED, &dimid)) ERR;
    if (nc_def_var(ncid, VAR_NAME, NC_CHAR, 1, &dimid, &varid)) ERR;
    if (nc_enddef(ncid)) ERR;
@@ -186,7 +212,11 @@ test_small_one(const char *testfile)
    if (nc_close(ncid)) ERR;
    
    /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+   if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
    if (nc_inq(ncid, &ndims, &nvars, &natts, &unlimdimid)) ERR;
    if (ndims != 1 && nvars != 1 && natts != 0 && unlimdimid != 0) ERR;
    if (nc_get_var_text(ncid, varid, &data_in)) ERR;
@@ -215,7 +245,11 @@ test_one_growing(const char *testfile)
    for (f = 0; f < 2; f++)
    {
       /* Create a file with one ulimited dimensions, and one var. */
+#ifdef TEST_PNETCDF
+      if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
       if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
       if (nc_def_dim(ncid, DIM1_NAME, NC_UNLIMITED, &dimid)) ERR;
       if (nc_def_var(ncid, VAR_NAME, NC_CHAR, 1, &dimid, &varid)) ERR;
       if (nc_close(ncid)) ERR;
@@ -225,7 +259,11 @@ test_one_growing(const char *testfile)
       for (r = 0; r < MAX_RECS; r++)
       {
 	 /* Write one record of var data, a single character. */
+#ifdef TEST_PNETCDF
+	 if (nc_open_par(testfile, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
 	 if (nc_open(testfile, NC_WRITE, &ncid)) ERR;
+#endif
 	 if (f && nc_set_fill(ncid, NC_NOFILL, NULL)) ERR;
 	 count[0] = 1;
 	 start[0] = r;
@@ -233,7 +271,11 @@ test_one_growing(const char *testfile)
 	 if (nc_close(ncid)) ERR;
       
 	 /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+         if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
 	 if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
 	 if (nc_inq_dimlen(ncid, 0, &len_in)) ERR;
 	 if (len_in != r + 1) ERR;
 	 index[0] = r;
@@ -260,7 +302,11 @@ test_one_growing_with_att(const char *testfile)
    int r;
 
    /* Create a file with one ulimited dimensions, and one var. */
+#ifdef TEST_PNETCDF
+   if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
    if (nc_def_dim(ncid, DIM1_NAME, NC_UNLIMITED, &dimid)) ERR;
    if (nc_def_var(ncid, VAR_NAME, NC_CHAR, 1, &dimid, &varid)) ERR;
    if (nc_close(ncid)) ERR;
@@ -275,7 +321,11 @@ test_one_growing_with_att(const char *testfile)
    for (r = 0; r < MAX_RECS; r++)
    {
       /* Write one record of var data, a single character. */
+#ifdef TEST_PNETCDF
+      if (nc_open_par(testfile, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
       if (nc_open(testfile, NC_WRITE, &ncid)) ERR;
+#endif
       count[0] = 1;
       start[0] = r;
       if (nc_put_vara_text(ncid, varid, start, count, &data[r])) ERR;
@@ -285,7 +335,11 @@ test_one_growing_with_att(const char *testfile)
       if (nc_close(ncid)) ERR;
       
       /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+      if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
       if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
       if (nc_inq_dimlen(ncid, 0, &len_in)) ERR;
       if (len_in != r + 1) ERR;
       index[0] = r;
@@ -313,7 +367,11 @@ test_two_growing_with_att(const char *testfile)
    int v, r;
 
    /* Create a file with one ulimited dimensions, and one var. */
+#ifdef TEST_PNETCDF
+   if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
    if (nc_def_dim(ncid, DIM1_NAME, NC_UNLIMITED, &dimid)) ERR;
    if (nc_def_var(ncid, VAR_NAME, NC_CHAR, 1, &dimid, &varid[0])) ERR;
    if (nc_def_var(ncid, VAR_NAME2, NC_CHAR, 1, &dimid, &varid[1])) ERR;
@@ -329,7 +387,11 @@ test_two_growing_with_att(const char *testfile)
    for (r = 0; r < MAX_RECS; r++)
    {
       /* Write one record of var data, a single character. */
+#ifdef TEST_PNETCDF
+      if (nc_open_par(testfile, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
       if (nc_open(testfile, NC_WRITE, &ncid)) ERR;
+#endif
       count[0] = 1;
       start[0] = r;
       sprintf(att_name, "a_%d", data[r]);
@@ -343,7 +405,11 @@ test_two_growing_with_att(const char *testfile)
       if (nc_close(ncid)) ERR;
       
       /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+      if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
       if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
       if (nc_inq_dimlen(ncid, 0, &len_in)) ERR;
       if (len_in != r + 1) ERR;
       index[0] = r;
@@ -367,7 +433,11 @@ test_one_with_att(const char *testfile)
    size_t start[NDIMS], count[NDIMS];
 
    /* Create a file with one ulimited dimensions, and one var. */
+#ifdef TEST_PNETCDF
+   if (nc_create_par(testfile, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_create(testfile, NC_CLOBBER, &ncid)) ERR;
+#endif
    if (nc_def_dim(ncid, DIM1_NAME, NC_UNLIMITED, &dimid)) ERR;
    if (nc_def_var(ncid, VAR_NAME, NC_CHAR, 1, &dimid, &varid)) ERR;
    if (nc_put_att_text(ncid, NC_GLOBAL, ATT_NAME, 1, &data)) ERR;
@@ -382,7 +452,11 @@ test_one_with_att(const char *testfile)
    if (nc_close(ncid)) ERR;
    
    /* Reopen the file and check it. */
+#ifdef TEST_PNETCDF
+   if (nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+#else
    if (nc_open(testfile, NC_NOWRITE, &ncid)) ERR;
+#endif
    if (nc_inq(ncid, &ndims, &nvars, &natts, &unlimdimid)) ERR;
    if (ndims != 1 && nvars != 1 && natts != 0 && unlimdimid != 0) ERR;
    if (nc_get_var_text(ncid, varid, &data_in)) ERR;
@@ -399,6 +473,10 @@ main(int argc, char **argv)
    int i;
    char testfile[NC_MAX_NAME + 1];
 
+#ifdef TEST_PNETCDF
+   MPI_Init(&argc, &argv);
+#endif
+
    printf("\n*** Testing small files.\n");
    /*nc_set_log_level(3);*/
 
@@ -413,10 +491,15 @@ main(int argc, char **argv)
 	    printf("Switching to netCDF classic format.\n");
 	    strcpy(testfile, "tst_small_classic.nc");
 	    break;
-	 case NC_FORMAT_64BIT:
-	    nc_set_default_format(NC_FORMAT_64BIT, NULL);
+	 case NC_FORMAT_CDF2:
+	    nc_set_default_format(NC_FORMAT_CDF2, NULL);
 	    printf("Switching to 64-bit offset format.\n");
 	    strcpy(testfile, "tst_small_64bit.nc");
+	    break;
+	 case NC_FORMAT_CDF5:
+	    nc_set_default_format(NC_FORMAT_CDF5, NULL);
+	    printf("Switching to 64-bit data format.\n");
+	    strcpy(testfile, "tst_small_cdf5.nc");
 	    break;
 #ifdef USE_NETCDF4
 	 case NC_FORMAT_NETCDF4_CLASSIC:
@@ -429,6 +512,10 @@ main(int argc, char **argv)
 	    strcpy(testfile, "tst_small_netcdf4.nc");
 	    printf("Switching to netCDF-4 format.\n");
 	    break;
+#else
+	 case NC_FORMAT_NETCDF4_CLASSIC:
+	 case NC_FORMAT_NETCDF4:
+	    continue; /* loop i */
 #endif
 	 default:
 	    printf("Unexpected format!\n");
@@ -470,6 +557,9 @@ main(int argc, char **argv)
       SUMMARIZE_ERR;
    }
 
+#ifdef TEST_PNETCDF
+   MPI_Finalize();
+#endif
    FINAL_RESULTS;
 }
 

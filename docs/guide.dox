@@ -3639,6 +3639,7 @@ arguments to the -k flag can be as follows.
         2, 64-bit-offset, '64-bit offset' – Produce a netcdf 64 bit classic file format file.
         3, hdf5, netCDF-4, enhanced – Produce a netcdf-4 format file.
         4, hdf5-nc3, 'netCDF-4 classic model', enhanced-nc3 – Produce a netcdf-4 file format, but restricted to netcdf-3 classic CDL input.
+        5, 64-bit-data, '64-bit data' – Produce a netcdf 64 bit classic CDF-5 file format file.
 
 Note that the -v flag is a deprecated alias for -k.
 
@@ -3695,7 +3696,7 @@ programs.
 UNIX syntax for invoking ncgen3:
 
 \code
-     ncgen3 [-b] [-o netcdf-file] [-c] [-f] [-v2|-v3] [-x] [input-file]
+     ncgen3 [-b] [-o netcdf-file] [-c] [-f] [-v2|-v3|-v5] [-x] [input-file]
 \endcode
 
 where:
@@ -3737,6 +3738,12 @@ because they require version 3.6.0 or later of the netCDF library.
 The generated netCDF file will be in netCDF-4/HDF5 format. These files
 are not as portable as classic format netCDF files, because they
 require version 4.0 or later of the netCDF library.
+
+-v5
+The generated netCDF file or program will use the version of the
+format with 64-bit integers, to allow for the creation of very large
+variables. These files are not as portable as classic format netCDF files,
+because they require version 4.4.0 or later of the netCDF library.
 
 -x
 Use “no fill” mode, omitting the initialization of variable values

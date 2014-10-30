@@ -376,6 +376,7 @@ ncx_szof(nc_type type)
 	switch(type){
 	case NC_BYTE:
 	case NC_CHAR:
+	case NC_UBYTE:
 		return(1);
 	case NC_SHORT :
 		return(2);
@@ -385,6 +386,14 @@ ncx_szof(nc_type type)
 		return X_SIZEOF_FLOAT;
 	case NC_DOUBLE :
 		return X_SIZEOF_DOUBLE;
+	case NC_USHORT : 
+		return X_SIZEOF_USHORT;
+	case NC_UINT : 
+		return X_SIZEOF_UINT;
+	case NC_INT64 : 
+		return X_SIZEOF_INT64;
+	case NC_UINT64 : 
+		return X_SIZEOF_UINT64;
 	default:
 	        assert("ncx_szof invalid type" == 0);
 	        return 0;
@@ -460,6 +469,8 @@ out :
 		case NC_BYTE :
 		case NC_CHAR :
 		case NC_SHORT :
+		case NC_UBYTE :
+		case NC_USHORT :
 		        if( varp->len%4 != 0 )
 			{
 			        varp->len += 4 - varp->len%4; /* round up */
@@ -562,7 +573,7 @@ NC3_def_var( int ncid, const char *name, nc_type type,
 	if(status != NC_NOERR)
 		return status;
 
-	status = nc_cktype(type);
+	status = nc_cktype(nc->mode, type);
 	if(status != NC_NOERR)
 		return status;
 

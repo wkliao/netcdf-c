@@ -1,4 +1,5 @@
-/********************************************************************* *   Copyright 1993, UCAR/Unidata
+/*********************************************************************
+ *   Copyright 1993, UCAR/Unidata
  *   See netcdf/COPYRIGHT file for copying and redistribution conditions.
  *   $Header: /upc/share/CVS/netcdf-3/libsrc4/NC5dispatch.c,v 1.5 2010/05/27 02:19:37 dmh Exp $
  *********************************************************************/
@@ -29,9 +30,10 @@ typedef struct NC5_INFO
 #define NC5_DATA(nc) ((NC5_INFO*)(nc)->dispatchdata)
 #define NC5_DATA_SET(nc,data) ((nc)->dispatchdata = (void*)(data))
 
-#define LEGAL_CREATE_FLAGS (NC_NOCLOBBER | NC_64BIT_OFFSET | NC_CLASSIC_MODEL | NC_SHARE | NC_MPIIO | NC_MPIPOSIX | NC_LOCK | NC_PNETCDF)
+/* Cannot have NC_MPIPOSIX flag, ignore NC_MPIIO as PnetCDF use MPIIO */
+#define LEGAL_CREATE_FLAGS (NC_NOCLOBBER | NC_64BIT_OFFSET | NC_CLASSIC_MODEL | NC_SHARE | NC_MPIIO | NC_LOCK | NC_PNETCDF | NC_64BIT_DATA)
 
-#define LEGAL_OPEN_FLAGS (NC_WRITE | NC_NOCLOBBER | NC_SHARE | NC_MPIIO | NC_MPIPOSIX | NC_LOCK | NC_PNETCDF | NC_CLASSIC_MODEL | NC_64BIT_OFFSET)
+#define LEGAL_OPEN_FLAGS (NC_WRITE | NC_NOCLOBBER | NC_SHARE | NC_MPIIO | NC_LOCK | NC_PNETCDF | NC_CLASSIC_MODEL | NC_64BIT_OFFSET | NC_64BIT_DATA)
 
 
 /**************************************************/
@@ -42,7 +44,7 @@ NC5_create(const char *path, int cmode,
 	  int use_parallel, void* mpidata,
 	  struct NC_Dispatch* table, NC* nc)
 {
-    int res;
+    int res, default_format;
     NC5_INFO* nc5;
     MPI_Comm comm = MPI_COMM_WORLD;
     MPI_Info info = MPI_INFO_NULL;
@@ -51,13 +53,23 @@ NC5_create(const char *path, int cmode,
     if(cmode & ~LEGAL_CREATE_FLAGS)
 	return NC_EINVAL;
 
-    /* Cannot have both MPIO flags */
-    if((cmode & (NC_MPIIO|NC_MPIPOSIX)) == (NC_MPIIO|NC_MPIPOSIX))
+    /* Cannot have both NC_64BIT_OFFSET & NC_64BIT_DATA */
+    if((cmode & (NC_64BIT_OFFSET|NC_64BIT_DATA)) == (NC_64BIT_OFFSET|NC_64BIT_DATA))
 	return NC_EINVAL;
 
-    /* Appears that this comment is wrong; allow 64 bit offset*/
-    /* Cannot have 64 bit offset flag */
-    /*if(cmode & (NC_64BIT_OFFSET)) return NC_EINVAL;*/
+    default_format = nc_get_default_format();
+    /* if (default_format == NC_FORMAT_CLASSIC) then we respect the format set in cmode */
+    if (default_format == NC_FORMAT_CDF2) {
+        if (! (cmode & NC_64BIT_OFFSET)) /* check if cmode has NC_64BIT_OFFSET already */
+            cmode |= NC_64BIT_OFFSET;
+    }
+    else if (default_format == NC_FORMAT_CDF5) {
+        if (! (cmode & NC_64BIT_DATA)) /* check if cmode has NC_64BIT_DATA already */
+            cmode |= NC_64BIT_DATA;
+    }
+
+    /* No MPI environment initialized */
+    if (mpidata == NULL) return NC_ENOPAR;
 
     comm = ((NC_MPI_INFO *)mpidata)->comm;
     info = ((NC_MPI_INFO *)mpidata)->info;
@@ -69,25 +81,10 @@ NC5_create(const char *path, int cmode,
     /* Link nc5 and nc */
     NC5_DATA_SET(nc,nc5);
 
-    /* Fix up the cmode by keeping only essential flags;
-       these are the flags that are the same in netcf.h and pnetcdf.h
-    */
-#if 0
-    cmode &= (NC_WRITE | NC_NOCLOBBER | NC_LOCK | NC_SHARE | NC_64BIT_OFFSET);
-#else
-    cmode &= (NC_WRITE | NC_NOCLOBBER | NC_LOCK | NC_SHARE );
-#endif
+    /* PnetCDF recognizes the flags below for create and ignores NC_LOCK and
+     * NC_SHARE */
+    cmode &= (NC_WRITE | NC_NOCLOBBER | NC_SHARE | NC_64BIT_OFFSET | NC_64BIT_DATA);
 
-    /* It turns out that pnetcdf.h defines a flag called
-       NC_64BIT_DATA (not to be confused with NC_64BIT_OFFSET).
-       This flag is essential to getting ncmpi_create to create
-       a proper pnetcdf format file.
-       It just happens that the value of NC_64BIT_DATA is the same
-       as the netcdf NC_NETCDF4 flag value. This is probably no accident.
-
-       In any case, this flag must be set.
-    */
-    cmode |= (NC_NETCDF4);
     res = ncmpi_create(comm, path, cmode, info, &(nc->int_ncid));
 
     if(res && nc5 != NULL) free(nc5); /* reclaim allocated space */
@@ -109,14 +106,6 @@ NC5_open(const char *path, int cmode,
     if(cmode & ~LEGAL_OPEN_FLAGS)
 	return NC_EINVAL;
 
-    /* Cannot have both MPIO flags */
-    if((cmode & (NC_MPIIO|NC_MPIPOSIX)) == (NC_MPIIO|NC_MPIPOSIX))
-	return NC_EINVAL;
-
-    /* Appears that this comment is wrong; allow 64 bit offset*/
-    /* Cannot have 64 bit offset flag */
-    /* if(cmode & (NC_64BIT_OFFSET)) return NC_EINVAL; */
-
     if(mpidata != NULL) {
         comm = ((NC_MPI_INFO *)mpidata)->comm;
         info = ((NC_MPI_INFO *)mpidata)->info;
@@ -125,12 +114,13 @@ NC5_open(const char *path, int cmode,
 	info = MPI_INFO_NULL;
     }
 
-    /* Fix up the cmode by keeping only essential flags;
-       these are the flags that are the same in netcf.h and pnetcdf.h
-    */
-    cmode &= (NC_WRITE | NC_NOCLOBBER | NC_LOCK | NC_SHARE | NC_64BIT_OFFSET);
-
-    cmode |= (NC_NETCDF4); /* see comment in NC5_create */
+    /* PnetCDF recognizes the flags NC_WRITE and NC_NOCLOBBER for file open
+     * and ignores NC_LOCK, NC_SHARE, NC_64BIT_OFFSET, and NC_64BIT_DATA.
+     * Ignoring the NC_64BIT_OFFSET and NC_64BIT_DATA flags is because the
+     * file is already in one of the CDF-formats, and setting these 2 flags
+     * will not change the format of that file.
+     */
+    cmode &= (NC_WRITE | NC_NOCLOBBER);
 
     /* Create our specific NC5_INFO instance */
     nc5 = (NC5_INFO*)calloc(1,sizeof(NC5_INFO));
@@ -159,6 +149,7 @@ NC5_redef(int ncid)
     return ncmpi_redef(nc->int_ncid);
 }
 
+/* no need any more
 static int
 NC5_enddef(int ncid)
 {
@@ -180,11 +171,33 @@ NC5_enddef(int ncid)
     }
     return status;
 }
+*/
 
 static int
 NC5__enddef(int ncid, size_t h_minfree, size_t v_align, size_t v_minfree, size_t r_align)
 {
-    return NC5_enddef(ncid);
+    int status;
+    NC* nc;
+    NC5_INFO* nc5;
+    MPI_Offset mpi_h_minfree = h_minfree;
+    MPI_Offset mpi_v_align   = v_align;
+    MPI_Offset mpi_v_minfree = v_minfree;
+    MPI_Offset mpi_r_align   = r_align;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR)
+	return status;
+
+    nc5 = NC5_DATA(nc);
+    assert(nc5);
+
+    status = ncmpi__enddef(nc->int_ncid, mpi_h_minfree, mpi_v_align,
+                           mpi_v_minfree, mpi_r_align);
+    if(!status) {
+	if (nc5->pnetcdf_access_mode == NC_INDEPENDENT)
+	    status = ncmpi_begin_indep_data(nc->int_ncid);
+    }
+    return status;
 }
 
 static int
@@ -257,7 +270,15 @@ NC5_inq_format(int ncid, int* formatp)
     NC* nc;
     int status = NC_check_id(ncid, &nc);
     if(status != NC_NOERR) return status;
-    return ncmpi_inq_format(nc->int_ncid,formatp);
+    status = ncmpi_inq_format(nc->int_ncid,formatp);
+
+/* NC_FORMAT_PNETCDF is now NC_FORMAT_CDF5
+    if(status == NC_NOERR) {
+        if (*formatp == NC_FORMAT_CDF5)
+            *formatp = NC_FORMAT_PNETCDF;
+    }
+*/
+    return status;
 }
 
 static int
@@ -284,29 +305,56 @@ NC5_inq(int ncid,
     return ncmpi_inq(nc->int_ncid,ndimsp,nvarsp,nattsp,unlimp);
 }
 
-static int
-atomic_size[6] = {
-1, 1, 2, 4, 4, 8
-};
+/* The sizes of types may vary from platform to platform, but within
+ * netCDF files, type sizes are fixed. */
+#define NC_CHAR_LEN sizeof(char)
+#define NC_STRING_LEN sizeof(char *)
+#define NC_BYTE_LEN 1
+#define NC_SHORT_LEN 2
+#define NC_INT_LEN 4
+#define NC_FLOAT_LEN 4
+#define NC_DOUBLE_LEN 8
+#define NC_INT64_LEN 8
+
+static int atomic_size[12] = {NC_BYTE_LEN,  NC_CHAR_LEN,  NC_SHORT_LEN,
+                              NC_INT_LEN,   NC_FLOAT_LEN, NC_DOUBLE_LEN,
+                              NC_BYTE_LEN,  NC_SHORT_LEN, NC_INT_LEN,
+                              NC_INT64_LEN, NC_INT64_LEN, NC_STRING_LEN};
+
 static char
-atomic_name[6][NC_MAX_NAME + 1] = {
-"byte", "char", "short","int", "float", "double"
-};
+atomic_name[12][NC_MAX_NAME + 1] = {"byte", "char", "short",
+                                    "int", "float", "double",
+                                    "ubyte", "ushort","uint",
+                                    "int64", "uint64", "string"};
 
 static int
 NC5_inq_type(int ncid, nc_type typeid, char* name, size_t* size)
 {
-   if(typeid < NC_BYTE || typeid > NC_DOUBLE)
-      return NC_EBADTYPE;
+    NC* nc;
+    int format, status;
 
-   /* Give the user the values they want. Subtract one because types
-    * are numbered starting at 1, not 0. */
-   if(name)
-      strcpy(name, atomic_name[typeid - 1]);
-   if(size)
-      *size = atomic_size[typeid - 1];
+    status = NC_check_id(ncid, &nc);
+    if (status != NC_NOERR) return status;
+    status = ncmpi_inq_format(nc->int_ncid, &format);
+    if (status != NC_NOERR) return status;
 
-   return NC_NOERR;
+    if (format == NC_FORMAT_CDF5) {
+        if (typeid < NC_BYTE || typeid > NC_STRING)
+           return NC_EBADTYPE;
+    }
+    else { /* CDF-1 and CDF-2 */
+        if (typeid < NC_BYTE || typeid > NC_DOUBLE)
+           return NC_EBADTYPE;
+    }
+
+    /* Give the user the values they want. Subtract one because types
+     * are numbered starting at 1, not 0. */
+    if (name)
+        strcpy(name, atomic_name[typeid - 1]);
+    if (size)
+        *size = atomic_size[typeid - 1];
+
+    return NC_NOERR;
 }
 
 static int
@@ -372,6 +420,7 @@ NC5_inq_att(int ncid, int varid, const char* name, nc_type* xtypep, size_t* lenp
     NC* nc;
     MPI_Offset mpilen;
     int status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
     status = ncmpi_inq_att(nc->int_ncid,varid,name,xtypep,&mpilen);
     if(status != NC_NOERR) return status;
     if(lenp) *lenp = mpilen;
@@ -448,10 +497,16 @@ NC5_get_att(
         return ncmpi_get_att_float(nc->int_ncid, varid, name, (float*)ip);
     case NC_DOUBLE:
         return ncmpi_get_att_double(nc->int_ncid, varid, name, (double*)ip);
-    case NC_INT64: /* synthetic */
-        return ncmpi_get_att_long(nc->int_ncid, varid, name, (long*)ip);
-    case NC_UBYTE: /* Synthetic */
+    case NC_UBYTE:
         return ncmpi_get_att_uchar(nc->int_ncid, varid, name, (unsigned char*)ip);
+    case NC_USHORT:
+        return ncmpi_get_att_ushort(nc->int_ncid, varid, name, (unsigned short*)ip);
+    case NC_UINT:
+        return ncmpi_get_att_uint(nc->int_ncid, varid, name, (unsigned int*)ip);
+    case NC_INT64:
+        return ncmpi_get_att_longlong(nc->int_ncid, varid, name, (long long*)ip);
+    case NC_UINT64:
+        return ncmpi_get_att_ulonglong(nc->int_ncid, varid, name, (unsigned long long*)ip);
     default:
 	break;
     }
@@ -498,10 +553,16 @@ NC5_put_att(
         return ncmpi_put_att_float(nc->int_ncid, varid, name, xtype, mpilen, (float*)ip);
     case NC_DOUBLE:
         return ncmpi_put_att_double(nc->int_ncid, varid, name, xtype, mpilen, (double*)ip);
-    case NC_INT64: /* synthetic */
-        return ncmpi_put_att_long(nc->int_ncid, varid, name, xtype, mpilen, (long*)ip);
-    case NC_UBYTE: /* Synthetic */
+    case NC_UBYTE:
         return ncmpi_put_att_uchar(nc->int_ncid, varid, name, xtype, mpilen, (unsigned char*)ip);
+    case NC_USHORT:
+        return ncmpi_put_att_ushort(nc->int_ncid, varid, name, xtype, mpilen, (unsigned short*)ip);
+    case NC_UINT:
+        return ncmpi_put_att_uint(nc->int_ncid, varid, name, xtype, mpilen, (unsigned int*)ip);
+    case NC_INT64:
+        return ncmpi_put_att_longlong(nc->int_ncid, varid, name, xtype, mpilen, (long long*)ip);
+    case NC_UINT64:
+        return ncmpi_put_att_ulonglong(nc->int_ncid, varid, name, xtype, mpilen, (unsigned long long*)ip);
     default:
 	break;
     }
@@ -564,18 +625,19 @@ NC5_get_vara(int ncid,
     nc5 = NC5_DATA(nc);
     assert(nc5);
 
-    /* No NC_LONG for parallel-netcdf library! */
-    if(memtype == NC_INT64)
-	 return NC_EINVAL;
-
     /* get variable's rank */
     status= ncmpi_inq_varndims(nc->int_ncid, varid, &rank);
     if(status) return status;
 
-    /* We must convert the start, count, and stride arrays to MPI_Offset type. */
+    /* We must convert the start and count arrays to MPI_Offset type. */
     for (d = 0; d < rank; d++) {
 	 mpi_start[d] = startp[d];
 	 mpi_count[d] = countp[d];
+    }
+
+    if (memtype == NC_NAT) {
+        status = ncmpi_inq_vartype(nc->int_ncid, varid, &memtype);
+        if (status) return status;
     }
 
     if(nc5->pnetcdf_access_mode == NC_INDEPENDENT) {
@@ -592,10 +654,16 @@ NC5_get_vara(int ncid,
 	    status=ncmpi_get_vara_float(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	case NC_DOUBLE:
 	    status=ncmpi_get_vara_double(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
-	case NC_UBYTE: /* synthetic */
+	case NC_UBYTE:
 	    status=ncmpi_get_vara_uchar(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
-	case NC_INT64: /* synthetic */
-	    status=ncmpi_get_vara_long(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_USHORT:
+	    status=ncmpi_get_vara_ushort(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT:
+	    status=ncmpi_get_vara_uint(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_INT64:
+	    status=ncmpi_get_vara_longlong(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT64:
+	    status=ncmpi_get_vara_ulonglong(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	default:
 	    status = NC_EBADTYPE;
 	}
@@ -615,8 +683,14 @@ NC5_get_vara(int ncid,
 	    status=ncmpi_get_vara_double_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	case NC_UBYTE:
 	    status=ncmpi_get_vara_uchar_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_USHORT:
+	    status=ncmpi_get_vara_ushort_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT:
+	    status=ncmpi_get_vara_uint_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	case NC_INT64:
-	    status=ncmpi_get_vara_long_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	    status=ncmpi_get_vara_longlong_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT64:
+	    status=ncmpi_get_vara_ulonglong_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	default:
 	    status = NC_EBADTYPE;
 	}
@@ -645,18 +719,19 @@ NC5_put_vara(int ncid,
     nc5 = NC5_DATA(nc);
     assert(nc5);
 
-    /* No NC_LONG for parallel-netcdf library! */
-    if(memtype == NC_INT64)
-	 return NC_EINVAL;
-
     /* get variable's rank */
     status = ncmpi_inq_varndims(nc->int_ncid, varid, &rank);
     if(status) return status;
 
-    /* We must convert the start, count, and stride arrays to MPI_Offset type. */
+    /* We must convert the start and count arrays to MPI_Offset type. */
     for (d = 0; d < rank; d++) {
 	 mpi_start[d] = startp[d];
 	 mpi_count[d] = countp[d];
+    }
+
+    if (memtype == NC_NAT) {
+        status = ncmpi_inq_vartype(nc->int_ncid, varid, &memtype);
+        if (status) return status;
     }
 
     if(nc5->pnetcdf_access_mode == NC_INDEPENDENT) {
@@ -675,8 +750,14 @@ NC5_put_vara(int ncid,
 	    status = ncmpi_put_vara_double(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	case NC_UBYTE:
 	    status = ncmpi_put_vara_uchar(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_USHORT:
+	    status = ncmpi_put_vara_ushort(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT:
+	    status = ncmpi_put_vara_uint(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	case NC_INT64:
-	    status = ncmpi_put_vara_long(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	    status = ncmpi_put_vara_longlong(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT64:
+	    status = ncmpi_put_vara_ulonglong(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	default:
 	    status = NC_EBADTYPE;
 	}
@@ -696,8 +777,402 @@ NC5_put_vara(int ncid,
 	    status = ncmpi_put_vara_double_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	case NC_UBYTE:
 	    status = ncmpi_put_vara_uchar_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_USHORT:
+	    status = ncmpi_put_vara_ushort_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT:
+	    status = ncmpi_put_vara_uint_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
 	case NC_INT64:
-	    status = ncmpi_put_vara_long_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	    status = ncmpi_put_vara_longlong_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	case NC_UINT64:
+	    status = ncmpi_put_vara_ulonglong_all(nc->int_ncid, varid, mpi_start, mpi_count, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+    }
+    return status;
+}
+
+static int
+NC5_get_vars(int ncid,
+		int varid,
+		const size_t* startp,
+		const size_t* countp,
+		const ptrdiff_t* stridep,
+		void* ip,
+		nc_type memtype)
+{
+    NC* nc;
+    NC5_INFO* nc5;
+    int status;
+    MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS];
+    int d;
+    int rank = 0;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    nc5 = NC5_DATA(nc);
+    assert(nc5);
+
+    /* get variable's rank */
+    status= ncmpi_inq_varndims(nc->int_ncid, varid, &rank);
+    if(status) return status;
+
+    /* We must convert the start, count, and stride arrays to MPI_Offset type. */
+    for (d = 0; d < rank; d++) {
+	 mpi_start[d] = startp[d];
+	 mpi_count[d] = countp[d];
+	 mpi_stride[d] = stridep[d];
+    }
+
+    if (memtype == NC_NAT) {
+        status = ncmpi_inq_vartype(nc->int_ncid, varid, &memtype);
+        if (status) return status;
+    }
+
+    if(nc5->pnetcdf_access_mode == NC_INDEPENDENT) {
+	switch(memtype) {
+	case NC_BYTE:
+	    status=ncmpi_get_vars_schar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_CHAR:
+	    status=ncmpi_get_vars_text(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_SHORT:
+	    status=ncmpi_get_vars_short(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT:
+	    status=ncmpi_get_vars_int(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_FLOAT:
+	    status=ncmpi_get_vars_float(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_DOUBLE:
+	    status=ncmpi_get_vars_double(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UBYTE:
+	    status=ncmpi_get_vars_uchar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_USHORT:
+	    status=ncmpi_get_vars_ushort(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT:
+	    status=ncmpi_get_vars_uint(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT64:
+	    status=ncmpi_get_vars_longlong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT64:
+	    status=ncmpi_get_vars_ulonglong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+      } else {
+	switch(memtype) {
+	case NC_BYTE:
+	    status=ncmpi_get_vars_schar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_CHAR:
+	    status=ncmpi_get_vars_text_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_SHORT:
+	    status=ncmpi_get_vars_short_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT:
+	    status=ncmpi_get_vars_int_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_FLOAT:
+	    status=ncmpi_get_vars_float_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_DOUBLE:
+	    status=ncmpi_get_vars_double_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UBYTE:
+	    status=ncmpi_get_vars_uchar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_USHORT:
+	    status=ncmpi_get_vars_ushort_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT:
+	    status=ncmpi_get_vars_uint_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT64:
+	    status=ncmpi_get_vars_longlong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT64:
+	    status=ncmpi_get_vars_ulonglong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+    }
+    return status;
+}
+
+static int
+NC5_put_vars(int ncid,
+	int varid,
+	const size_t* startp,
+	const size_t* countp,
+	const ptrdiff_t* stridep,
+	const void*ip,
+	nc_type memtype)
+{
+    NC* nc;
+    NC5_INFO* nc5;
+    int status;
+    MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS];
+    int d;
+    int rank;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    nc5 = NC5_DATA(nc);
+    assert(nc5);
+
+    /* get variable's rank */
+    status = ncmpi_inq_varndims(nc->int_ncid, varid, &rank);
+    if(status) return status;
+
+    /* We must convert the start, count, and stride arrays to MPI_Offset type. */
+    for (d = 0; d < rank; d++) {
+	 mpi_start[d] = startp[d];
+	 mpi_count[d] = countp[d];
+	 mpi_stride[d] = stridep[d];
+    }
+
+    if (memtype == NC_NAT) {
+        status = ncmpi_inq_vartype(nc->int_ncid, varid, &memtype);
+        if (status) return status;
+    }
+
+    if(nc5->pnetcdf_access_mode == NC_INDEPENDENT) {
+	switch(memtype) {
+	case NC_BYTE:
+	    status = ncmpi_put_vars_schar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_CHAR:
+	    status = ncmpi_put_vars_text(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_SHORT:
+	    status = ncmpi_put_vars_short(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT:
+	    status = ncmpi_put_vars_int(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_FLOAT:
+	    status = ncmpi_put_vars_float(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_DOUBLE:
+	    status = ncmpi_put_vars_double(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UBYTE:
+	    status = ncmpi_put_vars_uchar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_USHORT:
+	    status = ncmpi_put_vars_ushort(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT:
+	    status = ncmpi_put_vars_uint(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT64:
+	    status = ncmpi_put_vars_longlong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT64:
+	    status = ncmpi_put_vars_ulonglong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+      } else {
+	switch(memtype) {
+	case NC_BYTE:
+	    status = ncmpi_put_vars_schar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_CHAR:
+	    status = ncmpi_put_vars_text_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_SHORT:
+	    status = ncmpi_put_vars_short_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT:
+	    status = ncmpi_put_vars_int_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_FLOAT:
+	    status = ncmpi_put_vars_float_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_DOUBLE:
+	    status = ncmpi_put_vars_double_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UBYTE:
+	    status = ncmpi_put_vars_uchar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_USHORT:
+	    status = ncmpi_put_vars_ushort_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT:
+	    status = ncmpi_put_vars_uint_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_INT64:
+	    status = ncmpi_put_vars_longlong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	case NC_UINT64:
+	    status = ncmpi_put_vars_ulonglong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+    }
+    return status;
+}
+
+static int
+NC5_get_varm(int ncid,
+		int varid,
+		const size_t* startp,
+		const size_t* countp,
+		const ptrdiff_t* stridep,
+		const ptrdiff_t* imapp,
+		void* ip,
+		nc_type memtype)
+{
+    NC* nc;
+    NC5_INFO* nc5;
+    int status;
+    MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS], mpi_imap[NC_MAX_VAR_DIMS];
+    int d;
+    int rank = 0;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    nc5 = NC5_DATA(nc);
+    assert(nc5);
+
+    /* get variable's rank */
+    status= ncmpi_inq_varndims(nc->int_ncid, varid, &rank);
+    if(status) return status;
+
+    /* We must convert the start, count, stride, and imap arrays to MPI_Offset type. */
+    for (d = 0; d < rank; d++) {
+	 mpi_start[d] = startp[d];
+	 mpi_count[d] = countp[d];
+	 mpi_stride[d] = stridep[d];
+	 mpi_imap[d] = imapp[d];
+    }
+
+    if (memtype == NC_NAT) {
+        status = ncmpi_inq_vartype(nc->int_ncid, varid, &memtype);
+        if (status) return status;
+    }
+
+    if(nc5->pnetcdf_access_mode == NC_INDEPENDENT) {
+	switch(memtype) {
+	case NC_BYTE:
+	    status=ncmpi_get_varm_schar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_CHAR:
+	    status=ncmpi_get_varm_text(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_SHORT:
+	    status=ncmpi_get_varm_short(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT:
+	    status=ncmpi_get_varm_int(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_FLOAT:
+	    status=ncmpi_get_varm_float(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_DOUBLE:
+	    status=ncmpi_get_varm_double(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UBYTE:
+	    status=ncmpi_get_varm_uchar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_USHORT:
+	    status=ncmpi_get_varm_ushort(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT:
+	    status=ncmpi_get_varm_uint(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT64:
+	    status=ncmpi_get_varm_longlong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT64:
+	    status=ncmpi_get_varm_ulonglong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+      } else {
+	switch(memtype) {
+	case NC_BYTE:
+	    status=ncmpi_get_varm_schar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_CHAR:
+	    status=ncmpi_get_varm_text_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_SHORT:
+	    status=ncmpi_get_varm_short_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT:
+	    status=ncmpi_get_varm_int_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_FLOAT:
+	    status=ncmpi_get_varm_float_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_DOUBLE:
+	    status=ncmpi_get_varm_double_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UBYTE:
+	    status=ncmpi_get_varm_uchar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_USHORT:
+	    status=ncmpi_get_varm_ushort_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT:
+	    status=ncmpi_get_varm_uint_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT64:
+	    status=ncmpi_get_varm_longlong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT64:
+	    status=ncmpi_get_varm_ulonglong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+    }
+    return status;
+}
+
+static int
+NC5_put_varm(int ncid,
+	int varid,
+	const size_t* startp,
+	const size_t* countp,
+	const ptrdiff_t* stridep,
+	const ptrdiff_t* imapp,
+	const void*ip,
+	nc_type memtype)
+{
+    NC* nc;
+    NC5_INFO* nc5;
+    int status;
+    MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS], mpi_imap[NC_MAX_VAR_DIMS];
+    int d;
+    int rank;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    nc5 = NC5_DATA(nc);
+    assert(nc5);
+
+    /* get variable's rank */
+    status = ncmpi_inq_varndims(nc->int_ncid, varid, &rank);
+    if(status) return status;
+
+    /* We must convert the start, count, stride, and imap arrays to MPI_Offset type. */
+    for (d = 0; d < rank; d++) {
+	 mpi_start[d] = startp[d];
+	 mpi_count[d] = countp[d];
+	 mpi_stride[d] = stridep[d];
+	 mpi_imap[d] = imapp[d];
+    }
+
+    if (memtype == NC_NAT) {
+        status = ncmpi_inq_vartype(nc->int_ncid, varid, &memtype);
+        if (status) return status;
+    }
+
+    if(nc5->pnetcdf_access_mode == NC_INDEPENDENT) {
+	switch(memtype) {
+	case NC_BYTE:
+	    status = ncmpi_put_varm_schar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_CHAR:
+	    status = ncmpi_put_varm_text(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_SHORT:
+	    status = ncmpi_put_varm_short(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT:
+	    status = ncmpi_put_varm_int(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_FLOAT:
+	    status = ncmpi_put_varm_float(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_DOUBLE:
+	    status = ncmpi_put_varm_double(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UBYTE:
+	    status = ncmpi_put_varm_uchar(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_USHORT:
+	    status = ncmpi_put_varm_ushort(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT:
+	    status = ncmpi_put_varm_uint(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT64:
+	    status = ncmpi_put_varm_longlong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT64:
+	    status = ncmpi_put_varm_ulonglong(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	default:
+	    status = NC_EBADTYPE;
+	}
+      } else {
+	switch(memtype) {
+	case NC_BYTE:
+	    status = ncmpi_put_varm_schar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_CHAR:
+	    status = ncmpi_put_varm_text_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_SHORT:
+	    status = ncmpi_put_varm_short_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT:
+	    status = ncmpi_put_varm_int_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_FLOAT:
+	    status = ncmpi_put_varm_float_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_DOUBLE:
+	    status = ncmpi_put_varm_double_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UBYTE:
+	    status = ncmpi_put_varm_uchar_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_USHORT:
+	    status = ncmpi_put_varm_ushort_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT:
+	    status = ncmpi_put_varm_uint_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_INT64:
+	    status = ncmpi_put_varm_longlong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
+	case NC_UINT64:
+	    status = ncmpi_put_varm_ulonglong_all(nc->int_ncid, varid, mpi_start, mpi_count, mpi_stride, mpi_imap, ip); break;
 	default:
 	    status = NC_EBADTYPE;
 	}
@@ -1101,10 +1576,10 @@ NC5_inq_varid,
 NC5_rename_var,
 NC5_get_vara,
 NC5_put_vara,
-NCDEFAULT_get_vars,
-NCDEFAULT_put_vars,
-NCDEFAULT_get_varm,
-NCDEFAULT_put_varm,
+NC5_get_vars,
+NC5_put_vars,
+NC5_get_varm,
+NC5_put_varm,
 
 NC5_inq_var_all,
 
@@ -1161,3 +1636,4 @@ NC5_initialize(void)
     NC5_dispatch_table = &NC5_dispatcher;
     return NC_NOERR;
 }
+
