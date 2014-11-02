@@ -25,3 +25,9 @@ build-par
 build_llvm
 .vagrant
 Vagrantfile
+libsrc/attr.c
+libsrc/ncx.c
+libsrc/putget.c
+nc_test/test_put.c
+nc_test/test_get.c
+
