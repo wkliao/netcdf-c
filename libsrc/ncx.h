@@ -33,9 +33,13 @@
 #include <errno.h>
 #include <sys/types.h> /* off_t */
 #include <ncdispatch.h>
+
+#ifndef longlong
 #define longlong long long
-#define longlong long long
+#endif
+#ifndef ulonglong
 #define ulonglong unsigned long long
+#endif
 
 #if defined(_CRAY) && !defined(_CRAYIEEE) && !defined(__crayx1)
 #define CRAYFLOAT 1 /* CRAY Floating point */

@@ -8,7 +8,9 @@ Research/Unidata. See COPYRIGHT file for more info.
 */
 
 #include "ncdispatch.h"
+#ifdef USE_PNETCDF
 #include <pnetcdf.h>  /* ncmpi_strerror() */
+#endif
 
 /* Tell the user the version of netCDF. */
 static const char nc_libvers[] = PACKAGE_VERSION " of "__DATE__" "__TIME__" $";

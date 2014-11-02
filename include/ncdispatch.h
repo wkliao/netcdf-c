@@ -77,7 +77,11 @@
 #endif
 
 /* Define the range of Atomic types */
+#ifdef USE_NETCDF4
 #define ATOMICTYPEMAX NC_STRING
+#else
+#define ATOMICTYPEMAX NC_UINT64
+#endif
 
 /* Define an alias for int to indicate an error return */
 typedef int NCerror;

@@ -1464,9 +1464,9 @@ nc_inq_type(int ncid, nc_type xtype, char *name, size_t *size)
    NC* ncp;
    int format, ub=ATOMICTYPEMAX;
 
-   /* CDF-1 and CDF-2 support types up tp NC_STRING */
+   /* CDF-1 and CDF-2 support types up tp NC_DOUBLE */
    nc_inq_format(ncid, &format);
-   if (format != NC_FORMAT_CDF5) ub = NC_STRING;
+   if (format != NC_FORMAT_CDF5) ub = NC_DOUBLE;
 
    /* For compatibility, we need to allow inq about
       atomic types, even if ncid is ill-defined */
