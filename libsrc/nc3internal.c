@@ -881,7 +881,7 @@ NC_calcsize(const NC3_INFO *ncp, off_t *calcsizep)
 	    if(last_fix->len == X_UINT_MAX) { /* huge last fixed var */
           int i;
           varsize = 1;
-          for(i = 0; i < last_fix->ndims, last_fix->shape != NULL; i++ ) {
+          for(i = 0; i < last_fix->ndims && last_fix->shape != NULL; i++ ) {
             varsize *= last_fix->shape[i];
           }
 	    }

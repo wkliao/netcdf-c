@@ -1291,9 +1291,6 @@ NC5__enddef(int ncid,
 	return status;
     nc5 = NC5_DATA(nc);
 
-    if(!NC_indef(nc5))
-        return(NC_ENOTINDEFINE);
-
 #ifdef USE_PARALLEL
     if (nc5->use_parallel) {
         status = ncmpi__enddef(nc->int_ncid, h_minfree, v_align, v_minfree, r_align);
@@ -1304,6 +1301,9 @@ NC5__enddef(int ncid,
         return status;
     }
 #endif
+    if(!NC_indef(nc5))
+        return(NC_ENOTINDEFINE);
+
     return NC_endef(nc5, h_minfree, v_align, v_minfree, r_align);
 }
 
@@ -1319,13 +1319,13 @@ NC5_sync(int ncid)
 		return status;
 	nc5 = NC5_DATA(nc);
 
-	if(NC_indef(nc5))
-		return NC_EINDEFINE;
-
 #ifdef USE_PARALLEL
 	if (nc5->use_parallel)
 		return ncmpi_sync(nc->int_ncid);
 #endif
+
+	if(NC_indef(nc5))
+		return NC_EINDEFINE;
 
 	if(NC_readonly(nc5))
 	{
