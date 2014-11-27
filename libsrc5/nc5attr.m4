@@ -8,19 +8,23 @@ dnl
  *	Copyright 1996, University Corporation for Atmospheric Research
  *      See netcdf/COPYRIGHT file for copying and redistribution conditions.
  */
-/* $Id: attr.m4,v 2.39 2010/05/26 18:11:08 dmh Exp $ */
+/* $Id$ */
 
-#include "nc3internal.h"
+#include "nc5internal.h"
 #include "ncdispatch.h"
-#include "nc3dispatch.h"
+#include "nc5dispatch.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "ncx.h"
+#include "nc5ncx.h"
 #include "fbits.h"
 #include "rnd.h"
 #include "utf8proc.h"
 
+#ifdef USE_PARALLEL
+/* Must follow netcdf.h */
+#include <pnetcdf.h>
+#endif
 
 /*
  * Free attr
@@ -28,7 +32,7 @@ dnl
 NC_free_attr()
  */
 void
-free_NC_attr(NC_attr *attrp)
+nc5x_free_NC_attr(NC_attr *attrp)
 {
 
 	if(attrp == NULL)
@@ -43,35 +47,45 @@ free_NC_attr(NC_attr *attrp)
  *  external representation (as the values of an attribute)?
  */
 static size_t
-ncx_len_NC_attrV(nc_type type, size_t nelems)
+nc5x_len_NC_attrV(nc_type type, size_t nelems)
 {
 	switch(type) {
 	case NC_BYTE:
 	case NC_CHAR:
-		return ncx_len_char(nelems);
+		return nc5x_len_char(nelems);
 	case NC_SHORT:
-		return ncx_len_short(nelems);
+		return nc5x_len_short(nelems);
 	case NC_INT:
-		return ncx_len_int(nelems);
+		return nc5x_len_int(nelems);
 	case NC_FLOAT:
-		return ncx_len_float(nelems);
+		return nc5x_len_float(nelems);
 	case NC_DOUBLE:
-		return ncx_len_double(nelems);
+		return nc5x_len_double(nelems);
+	case NC_UBYTE:
+		return nc5x_len_ubyte(nelems);
+	case NC_USHORT:
+		return nc5x_len_ushort(nelems);
+	case NC_UINT:
+		return nc5x_len_uint(nelems);
+	case NC_INT64:
+		return nc5x_len_int64(nelems);
+	case NC_UINT64:
+		return nc5x_len_uint64(nelems);
 	default:
-	        assert("ncx_len_NC_attr bad type" == 0);
+	        assert("nc5x_len_NC_attr bad type" == 0);
 	}
 	return 0;
 }
 
 
 NC_attr *
-new_x_NC_attr(
+nc5x_new_x_NC_attr(
 	NC_string *strp,
 	nc_type type,
 	size_t nelems)
 {
 	NC_attr *attrp;
-	const size_t xsz = ncx_len_NC_attrV(type, nelems);
+	const size_t xsz = nc5x_len_NC_attrV(type, nelems);
 	size_t sz = M_RNDUP(sizeof(NC_attr));
 
 	assert(!(xsz == 0 && nelems != 0));
@@ -119,7 +133,7 @@ new_NC_attr(
 	if(strp == NULL)
 		return NULL;
 	
-	attrp = new_x_NC_attr(strp, type, nelems);
+	attrp = nc5x_new_x_NC_attr(strp, type, nelems);
 	if(attrp == NULL)
 	{
 		free_NC_string(strp);
@@ -148,7 +162,7 @@ dup_NC_attr(const NC_attr *rattrp)
  * Leaves the array itself allocated.
  */
 void
-free_NC_attrarrayV0(NC_attrarray *ncap)
+nc5x_free_NC_attrarrayV0(NC_attrarray *ncap)
 {
 	assert(ncap != NULL);
 
@@ -162,7 +176,7 @@ free_NC_attrarrayV0(NC_attrarray *ncap)
 		NC_attr *const *const end = &app[ncap->nelems];
 		for( /*NADA*/; app < end; app++)
 		{
-			free_NC_attr(*app);
+			nc5x_free_NC_attr(*app);
 			*app = NULL;
 		}
 	}
@@ -176,7 +190,7 @@ free_NC_attrarrayV0(NC_attrarray *ncap)
 NC_free_array()
  */
 void
-free_NC_attrarrayV(NC_attrarray *ncap)
+nc5x_free_NC_attrarrayV(NC_attrarray *ncap)
 {
 	assert(ncap != NULL);
 	
@@ -185,7 +199,7 @@ free_NC_attrarrayV(NC_attrarray *ncap)
 
 	assert(ncap->value != NULL);
 
-	free_NC_attrarrayV0(ncap);
+	nc5x_free_NC_attrarrayV0(ncap);
 
 	free(ncap->value);
 	ncap->value = NULL;
@@ -194,7 +208,7 @@ free_NC_attrarrayV(NC_attrarray *ncap)
 
 
 int
-dup_NC_attrarrayV(NC_attrarray *ncap, const NC_attrarray *ref)
+nc5x_dup_NC_attrarrayV(NC_attrarray *ncap, const NC_attrarray *ref)
 {
 	int status = NC_NOERR;
 
@@ -230,7 +244,7 @@ dup_NC_attrarrayV(NC_attrarray *ncap, const NC_attrarray *ref)
 
 	if(status != NC_NOERR)
 	{
-		free_NC_attrarrayV(ncap);
+		nc5x_free_NC_attrarrayV(ncap);
 		return status;
 	}
 
@@ -282,7 +296,7 @@ incr_NC_attrarray(NC_attrarray *ncap, NC_attr *newelemp)
 }
 
 
-NC_attr *
+static NC_attr *
 elem_NC_attrarray(const NC_attrarray *ncap, size_t elem)
 {
 	assert(ncap != NULL);
@@ -302,7 +316,7 @@ elem_NC_attrarray(const NC_attrarray *ncap, size_t elem)
  *  else NULL on error
  */
 static NC_attrarray *
-NC_attrarray0(NC3_INFO* ncp, int varid)
+NC_attrarray0(NC5_INFO* ncp, int varid)
 {
 	NC_attrarray *ap;
 
@@ -328,7 +342,7 @@ NC_attrarray0(NC3_INFO* ncp, int varid)
  *  return match or NULL if Not Found or out of memory.
  */
 NC_attr **
-NC_findattr(const NC_attrarray *ncap, const char *uname)
+NC5_findattr(const NC_attrarray *ncap, const char *uname)
 {
 	NC_attr **attrpp;
 	size_t attrid;
@@ -373,20 +387,20 @@ NC_lookupattr(int ncid,
 {
 	int status;
 	NC* nc;
-	NC3_INFO *ncp;
+	NC5_INFO *ncp;
 	NC_attrarray *ncap;
 	NC_attr **tmp;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
 	ncap = NC_attrarray0(ncp, varid);
 	if(ncap == NULL)
 		return NC_ENOTVAR;
 
-	tmp = NC_findattr(ncap, name);
+	tmp = NC5_findattr(ncap, name);
 	if(tmp == NULL)
 		return NC_ENOTATT;
 
@@ -399,19 +413,23 @@ NC_lookupattr(int ncid,
 /* Public */
 
 int
-NC3_inq_attname(int ncid, int varid, int attnum, char *name)
+NC5_inq_attname(int ncid, int varid, int attnum, char *name)
 {
 	int status;
 	NC* nc;
-	NC3_INFO *ncp;
+	NC5_INFO *ncp;
 	NC_attrarray *ncap;
 	NC_attr *attrp;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
+#ifdef USE_PARALLEL
+	if (ncp->use_parallel)
+		return ncmpi_inq_attname(nc->int_ncid,varid,attnum,name);
+#endif
 	ncap = NC_attrarray0(ncp, varid);
 	if(ncap == NULL)
 		return NC_ENOTVAR;
@@ -428,25 +446,29 @@ NC3_inq_attname(int ncid, int varid, int attnum, char *name)
 
 
 int 
-NC3_inq_attid(int ncid, int varid, const char *name, int *attnump)
+NC5_inq_attid(int ncid, int varid, const char *name, int *attnump)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* ncp;
+	NC5_INFO* ncp;
 	NC_attrarray *ncap;
 	NC_attr **attrpp;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
+#ifdef USE_PARALLEL
+	if (ncp->use_parallel)
+		return ncmpi_inq_attid(nc->int_ncid,varid,name,attnump);
+#endif
 	ncap = NC_attrarray0(ncp, varid);
 	if(ncap == NULL)
 		return NC_ENOTVAR;
 	
 
-	attrpp = NC_findattr(ncap, name);
+	attrpp = NC5_findattr(ncap, name);
 	if(attrpp == NULL)
 		return NC_ENOTATT;
 
@@ -457,7 +479,7 @@ NC3_inq_attid(int ncid, int varid, const char *name, int *attnump)
 }
 
 int
-NC3_inq_att(int ncid,
+NC5_inq_att(int ncid,
 	int varid,
 	const char *name, /* input, attribute name */
 	nc_type *datatypep,
@@ -466,6 +488,18 @@ NC3_inq_att(int ncid,
 	int status;
 	NC_attr *attrp;
 
+#ifdef USE_PARALLEL
+	NC* nc;
+	status = NC_check_id(ncid, &nc);
+	if(status != NC_NOERR) return status;
+
+	if (((NC5_INFO*)nc->dispatchdata)->use_parallel) {
+		MPI_Offset mpilen;
+		status = ncmpi_inq_att(nc->int_ncid,varid,name,datatypep,&mpilen);
+		if(status == NC_NOERR && lenp) *lenp = mpilen;
+		return status;
+	}
+#endif
 	status = NC_lookupattr(ncid, varid, name, &attrp);
 	if(status != NC_NOERR)
 		return status;
@@ -480,23 +514,27 @@ NC3_inq_att(int ncid,
 
 
 int
-NC3_rename_att( int ncid, int varid, const char *name, const char *unewname)
+NC5_rename_att( int ncid, int varid, const char *name, const char *unewname)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* ncp;
+	NC5_INFO* ncp;
 	NC_attrarray *ncap;
 	NC_attr **tmp;
 	NC_attr *attrp;
 	NC_string *newStr, *old;
 	char *newname;  /* normalized version */
 
-			/* sortof inline clone of NC_lookupattr() */
+	/* sortof inline clone of NC_lookupattr() */
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
+#ifdef USE_PARALLEL
+	if (ncp->use_parallel)
+		return ncmpi_rename_att(nc->int_ncid,varid,name,unewname);
+#endif
 	if(NC_readonly(ncp))
 		return NC_EPERM;
 
@@ -508,13 +546,13 @@ NC3_rename_att( int ncid, int varid, const char *name, const char *unewname)
 	if(status != NC_NOERR)
 		return status;
 
-	tmp = NC_findattr(ncap, name);
+	tmp = NC5_findattr(ncap, name);
 	if(tmp == NULL)
 		return NC_ENOTATT;
 	attrp = *tmp;
 			/* end inline clone NC_lookupattr() */
 
-	if(NC_findattr(ncap, unewname) != NULL)
+	if(NC5_findattr(ncap, unewname) != NULL)
 	{
 		/* name in use */
 		return NC_ENAMEINUSE;
@@ -544,7 +582,7 @@ NC3_rename_att( int ncid, int varid, const char *name, const char *unewname)
 
 	if(NC_doHsync(ncp))
 	{
-		status = NC_sync(ncp);
+		status = nc5x_sync(ncp);
 		if(status != NC_NOERR)
 			return status;
 	}
@@ -553,11 +591,11 @@ NC3_rename_att( int ncid, int varid, const char *name, const char *unewname)
 }
 
 int
-NC3_del_att(int ncid, int varid, const char *uname)
+NC5_del_att(int ncid, int varid, const char *uname)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* ncp;
+	NC5_INFO* ncp;
 	NC_attrarray *ncap;
 	NC_attr **attrpp;
 	NC_attr *old = NULL;
@@ -567,8 +605,12 @@ NC3_del_att(int ncid, int varid, const char *uname)
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
+#ifdef USE_PARALLEL
+	if (ncp->use_parallel)
+		return ncmpi_del_att(nc->int_ncid,varid,uname);
+#endif
 	if(!NC_indef(ncp))
 		return NC_ENOTINDEFINE;
 
@@ -581,7 +623,7 @@ NC3_del_att(int ncid, int varid, const char *uname)
 	if(name == NULL)
 	    return NC_ENOMEM;
 	
-			/* sortof inline NC_findattr() */
+			/* sortof inline NC5_findattr() */
 	slen = strlen(name);
 
 	attrpp = (NC_attr **) ncap->value;
@@ -598,7 +640,7 @@ NC3_del_att(int ncid, int varid, const char *uname)
 	}
 	if( (size_t) attrid == ncap->nelems )
 		return NC_ENOTATT;
-			/* end inline NC_findattr() */
+			/* end inline NC5_findattr() */
 
 	/* shuffle down */
 	for(attrid++; (size_t) attrid < ncap->nelems; attrid++)
@@ -610,7 +652,7 @@ NC3_del_att(int ncid, int varid, const char *uname)
 	/* decrement count */
 	ncap->nelems--;
 
-	free_NC_attr(old);
+	nc5x_free_NC_attr(old);
 
 	return NC_NOERR;
 }
@@ -621,23 +663,33 @@ dnl
 define(`XNCX_PAD_PUTN',dnl
 `dnl
 static int
-ncx_pad_putn_I$1(void **xpp, size_t nelems, const $1 *tp, nc_type type)
+nc5x_pad_putn_I$1(void **xpp, size_t nelems, const $1 *tp, nc_type type)
 {
 	switch(type) {
 	case NC_CHAR:
 		return NC_ECHAR;
 	case NC_BYTE:
-		return ncx_pad_putn_schar_$1(xpp, nelems, tp);
+		return nc5x_pad_putn_schar_$1(xpp, nelems, tp);
 	case NC_SHORT:
-		return ncx_pad_putn_short_$1(xpp, nelems, tp);
+		return nc5x_pad_putn_short_$1(xpp, nelems, tp);
 	case NC_INT:
-		return ncx_putn_int_$1(xpp, nelems, tp);
+		return nc5x_putn_int_$1(xpp, nelems, tp);
 	case NC_FLOAT:
-		return ncx_putn_float_$1(xpp, nelems, tp);
+		return nc5x_putn_float_$1(xpp, nelems, tp);
 	case NC_DOUBLE:
-		return ncx_putn_double_$1(xpp, nelems, tp);
+		return nc5x_putn_double_$1(xpp, nelems, tp);
+	case NC_UBYTE:
+		return nc5x_pad_putn_uchar_$1(xpp, nelems, tp);
+	case NC_USHORT:
+		return nc5x_putn_ushort_$1(xpp, nelems, tp);
+	case NC_UINT:
+		return nc5x_putn_uint_$1(xpp, nelems, tp);
+	case NC_INT64:
+		return nc5x_putn_int64_$1(xpp, nelems, tp);
+	case NC_UINT64:
+		return nc5x_putn_uint64_$1(xpp, nelems, tp);
 	default:
-                assert("ncx_pad_putn_I$1 invalid type" == 0);
+                assert("nc5x_pad_putn_I$1 invalid type" == 0);
 	}
 	return NC_EBADTYPE;
 }
@@ -648,23 +700,33 @@ dnl
 define(`XNCX_PAD_GETN',dnl
 `dnl
 static int
-ncx_pad_getn_I$1(const void **xpp, size_t nelems, $1 *tp, nc_type type)
+nc5x_pad_getn_I$1(const void **xpp, size_t nelems, $1 *tp, nc_type type)
 {
 	switch(type) {
 	case NC_CHAR:
 		return NC_ECHAR;
+	case NC_UBYTE:
+		return nc5x_pad_getn_uchar_$1(xpp, nelems, tp);
 	case NC_BYTE:
-		return ncx_pad_getn_schar_$1(xpp, nelems, tp);
+		return nc5x_pad_getn_schar_$1(xpp, nelems, tp);
 	case NC_SHORT:
-		return ncx_pad_getn_short_$1(xpp, nelems, tp);
+		return nc5x_pad_getn_short_$1(xpp, nelems, tp);
 	case NC_INT:
-		return ncx_getn_int_$1(xpp, nelems, tp);
+		return nc5x_getn_int_$1(xpp, nelems, tp);
 	case NC_FLOAT:
-		return ncx_getn_float_$1(xpp, nelems, tp);
+		return nc5x_getn_float_$1(xpp, nelems, tp);
 	case NC_DOUBLE:
-		return ncx_getn_double_$1(xpp, nelems, tp);
+		return nc5x_getn_double_$1(xpp, nelems, tp);
+	case NC_USHORT:
+		return nc5x_getn_ushort_$1(xpp, nelems, tp);
+	case NC_UINT:
+		return nc5x_getn_uint_$1(xpp, nelems, tp);
+	case NC_INT64:
+		return nc5x_getn_int64_$1(xpp, nelems, tp);
+	case NC_UINT64:
+		return nc5x_getn_uint64_$1(xpp, nelems, tp);
 	default:
-	        assert("ncx_pad_getn_I$1 invalid type" == 0);
+	        assert("nc5x_pad_getn_I$1 invalid type" == 0);
 	}
 	return NC_EBADTYPE;
 }
@@ -697,6 +759,15 @@ XNCX_PAD_GETN(long)
 XNCX_PAD_PUTN(longlong)
 XNCX_PAD_GETN(longlong)
 
+XNCX_PAD_PUTN(ushort)
+XNCX_PAD_GETN(ushort)
+
+XNCX_PAD_PUTN(uint)
+XNCX_PAD_GETN(uint)
+
+XNCX_PAD_PUTN(ulonglong)
+XNCX_PAD_GETN(ulonglong)
+
 
 /* Common dispatcher for put cases */
 static int
@@ -705,21 +776,27 @@ dispatchput(void **xpp, size_t nelems, const void* tp,
 {
     switch (memtype) {
     case NC_CHAR:
-        return ncx_pad_putn_text(xpp,nelems, (char *)tp);
+        return nc5x_pad_putn_text(xpp,nelems, (char *)tp);
     case NC_BYTE:
-        return ncx_pad_putn_Ischar(xpp, nelems, (schar*)tp, atype);
+        return nc5x_pad_putn_Ischar(xpp, nelems, (schar*)tp, atype);
     case NC_SHORT:
-        return ncx_pad_putn_Ishort(xpp, nelems, (short*)tp, atype);
+        return nc5x_pad_putn_Ishort(xpp, nelems, (short*)tp, atype);
     case NC_INT:
-          return ncx_pad_putn_Iint(xpp, nelems, (int*)tp, atype);
+          return nc5x_pad_putn_Iint(xpp, nelems, (int*)tp, atype);
     case NC_FLOAT:
-        return ncx_pad_putn_Ifloat(xpp, nelems, (float*)tp, atype);
+        return nc5x_pad_putn_Ifloat(xpp, nelems, (float*)tp, atype);
     case NC_DOUBLE:
-        return ncx_pad_putn_Idouble(xpp, nelems, (double*)tp, atype);
+        return nc5x_pad_putn_Idouble(xpp, nelems, (double*)tp, atype);
     case NC_UBYTE: /*Synthetic*/
-        return ncx_pad_putn_Iuchar(xpp,nelems, (uchar *)tp, atype);
+        return nc5x_pad_putn_Iuchar(xpp,nelems, (uchar *)tp, atype);
+    case NC_USHORT:
+          return nc5x_pad_putn_Iushort(xpp, nelems, (ushort*)tp, atype);
+    case NC_UINT:
+          return nc5x_pad_putn_Iuint(xpp, nelems, (uint*)tp, atype);
     case NC_INT64:
-          return ncx_pad_putn_Ilonglong(xpp, nelems, (longlong*)tp, atype);
+          return nc5x_pad_putn_Ilonglong(xpp, nelems, (longlong*)tp, atype);
+    case NC_UINT64:
+          return nc5x_pad_putn_Iulonglong(xpp, nelems, (ulonglong*)tp, atype);
     case NC_NAT:
         return NC_EBADTYPE;
     default:
@@ -729,7 +806,7 @@ dispatchput(void **xpp, size_t nelems, const void* tp,
 }
 
 int
-NC3_put_att(
+NC5_put_att(
 	int ncid,
 	int varid,
 	const char *name,
@@ -740,7 +817,7 @@ NC3_put_att(
 {
     int status;
     NC *nc;
-    NC3_INFO* ncp;
+    NC5_INFO* ncp;
     NC_attrarray *ncap;
     NC_attr **attrpp;
     NC_attr *old = NULL;
@@ -749,7 +826,41 @@ NC3_put_att(
     status = NC_check_id(ncid, &nc);
     if(status != NC_NOERR)
 	return status;
-    ncp = NC3_DATA(nc);
+    ncp = NC5_DATA(nc);
+
+#ifdef USE_PARALLEL
+    if (ncp->use_parallel) {
+        if (!name || (strlen(name) > NC_MAX_NAME))
+	    return NC_EBADNAME;
+
+        switch (memtype) {
+        case NC_CHAR:
+            return ncmpi_put_att_text(nc->int_ncid, varid, name, nelems, (char*)value);
+        case NC_BYTE:
+            return ncmpi_put_att_schar(nc->int_ncid, varid, name, type, nelems, (signed char*)value);
+        case NC_SHORT:
+            return ncmpi_put_att_short(nc->int_ncid, varid, name, type, nelems, (short*)value);
+        case NC_INT:
+            return ncmpi_put_att_int(nc->int_ncid, varid, name, type, nelems, (int*)value);
+        case NC_FLOAT:
+            return ncmpi_put_att_float(nc->int_ncid, varid, name, type, nelems, (float*)value);
+        case NC_DOUBLE:
+            return ncmpi_put_att_double(nc->int_ncid, varid, name, type, nelems, (double*)value);
+        case NC_UBYTE:
+            return ncmpi_put_att_uchar(nc->int_ncid, varid, name, type, nelems, (unsigned char*)value);
+        case NC_USHORT:
+            return ncmpi_put_att_ushort(nc->int_ncid, varid, name, type, nelems, (unsigned short*)value);
+        case NC_UINT:
+            return ncmpi_put_att_uint(nc->int_ncid, varid, name, type, nelems, (unsigned int*)value);
+        case NC_INT64:
+            return ncmpi_put_att_longlong(nc->int_ncid, varid, name, type, nelems, (long long*)value);
+        case NC_UINT64:
+            return ncmpi_put_att_ulonglong(nc->int_ncid, varid, name, type, nelems, (unsigned long long*)value);
+        default:
+            return NC_EBADTYPE;
+        }
+    }
+#endif
 
     if(NC_readonly(ncp))
 	return NC_EPERM;
@@ -758,7 +869,7 @@ NC3_put_att(
     if(ncap == NULL)
 	return NC_ENOTVAR;
 
-    status = nc_cktype(type);
+    status = nc5_cktype(nc->mode, type);
     if(status != NC_NOERR)
 	return status;
 
@@ -776,13 +887,13 @@ NC3_put_att(
     if(nelems != 0 && value == NULL)
 	return NC_EINVAL; /* Null arg */
 
-    attrpp = NC_findattr(ncap, name);
+    attrpp = NC5_findattr(ncap, name);
 
     /* 4 cases: exists X indef */
 
     if(attrpp != NULL) { /* name in use */
         if(!NC_indef(ncp)) {
-	    const size_t xsz = ncx_len_NC_attrV(type, nelems);
+	    const size_t xsz = nc5x_len_NC_attrV(type, nelems);
             attrp = *attrpp; /* convenience */
     
 	    if(xsz > attrp->xsz) return NC_ENOTINDEFINE;
@@ -800,10 +911,10 @@ NC3_put_att(
             set_NC_hdirty(ncp);
 
             if(NC_doHsync(ncp)) {
-	        const int lstatus = NC_sync(ncp);
+	        const int lstatus = nc5x_sync(ncp);
                 /*
                  * N.B.: potentially overrides NC_ERANGE
-                 * set by ncx_pad_putn_I$1
+                 * set by nc5x_pad_putn_I$1
                  */
                 if(lstatus != ENOERR) return lstatus;
             }
@@ -832,15 +943,15 @@ NC3_put_att(
     if(attrpp != NULL) {
         assert(old != NULL);
         *attrpp = attrp;
-        free_NC_attr(old);
+        nc5x_free_NC_attr(old);
     } else {
         const int lstatus = incr_NC_attrarray(ncap, attrp);
         /*
          * N.B.: potentially overrides NC_ERANGE
-         * set by ncx_pad_putn_I$1
+         * set by nc5x_pad_putn_I$1
          */
         if(lstatus != NC_NOERR) {
-           free_NC_attr(attrp);
+           nc5x_free_NC_attr(attrp);
            return lstatus;
         }
     }
@@ -848,7 +959,7 @@ NC3_put_att(
 }
 
 int
-NC3_get_att(
+NC5_get_att(
 	int ncid,
 	int varid,
 	const char *name,
@@ -858,6 +969,49 @@ NC3_get_att(
     int status;
     NC_attr *attrp;
     const void *xp;
+
+#ifdef USE_PARALLEL
+    NC* nc;
+    nc_type xtype;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    if (((NC5_INFO*)nc->dispatchdata)->use_parallel) {
+
+        status = NC5_inq_att(ncid,varid,name,&xtype,NULL);
+
+        if(memtype == NC_NAT) memtype = xtype;
+
+        switch (memtype) {
+        case NC_CHAR:
+            return ncmpi_get_att_text(nc->int_ncid, varid, name, (char*)value);
+        case NC_BYTE:
+            return ncmpi_get_att_schar(nc->int_ncid, varid, name, (signed char*)value);
+        case NC_SHORT:
+            return ncmpi_get_att_short(nc->int_ncid, varid, name, (short*)value);
+        case NC_INT:
+            return ncmpi_get_att_int(nc->int_ncid, varid, name, (int*)value);
+        case NC_FLOAT:
+            return ncmpi_get_att_float(nc->int_ncid, varid, name, (float*)value);
+        case NC_DOUBLE:
+            return ncmpi_get_att_double(nc->int_ncid, varid, name, (double*)value);
+        case NC_UBYTE:
+            return ncmpi_get_att_uchar(nc->int_ncid, varid, name, (unsigned char*)value);
+        case NC_USHORT:
+            return ncmpi_get_att_ushort(nc->int_ncid, varid, name, (unsigned short*)value);
+        case NC_UINT:
+            return ncmpi_get_att_uint(nc->int_ncid, varid, name, (unsigned int*)value);
+        case NC_INT64:
+            return ncmpi_get_att_longlong(nc->int_ncid, varid, name, (long long*)value);
+        case NC_UINT64:
+            return ncmpi_get_att_ulonglong(nc->int_ncid, varid, name, (unsigned long long*)value);
+        default:
+	    break;
+        }
+        return NC_EBADTYPE;
+    }
+#endif
 
     status = NC_lookupattr(ncid, varid, name, &attrp);
     if(status != NC_NOERR) return status;
@@ -874,21 +1028,27 @@ NC3_get_att(
     xp = attrp->xvalue;
     switch (memtype) {
     case NC_CHAR:
-        return ncx_pad_getn_text(&xp, attrp->nelems , (char *)value);
+        return nc5x_pad_getn_text(&xp, attrp->nelems , (char *)value);
     case NC_BYTE:
-        return ncx_pad_getn_Ischar(&xp,attrp->nelems,(schar*)value,attrp->type);
+        return nc5x_pad_getn_Ischar(&xp,attrp->nelems,(schar*)value,attrp->type);
     case NC_SHORT:
-        return ncx_pad_getn_Ishort(&xp,attrp->nelems,(short*)value,attrp->type);
+        return nc5x_pad_getn_Ishort(&xp,attrp->nelems,(short*)value,attrp->type);
     case NC_INT:
-          return ncx_pad_getn_Iint(&xp,attrp->nelems,(int*)value,attrp->type);
+          return nc5x_pad_getn_Iint(&xp,attrp->nelems,(int*)value,attrp->type);
     case NC_FLOAT:
-        return ncx_pad_getn_Ifloat(&xp,attrp->nelems,(float*)value,attrp->type);
+        return nc5x_pad_getn_Ifloat(&xp,attrp->nelems,(float*)value,attrp->type);
     case NC_DOUBLE:
-        return ncx_pad_getn_Idouble(&xp,attrp->nelems,(double*)value,attrp->type);
-    case NC_INT64:
-          return ncx_pad_getn_Ilonglong(&xp,attrp->nelems,(longlong*)value,attrp->type);
+        return nc5x_pad_getn_Idouble(&xp,attrp->nelems,(double*)value,attrp->type);
     case NC_UBYTE: /* Synthetic */
-        return ncx_pad_getn_Iuchar(&xp, attrp->nelems , (uchar *)value, attrp->type);
+        return nc5x_pad_getn_Iuchar(&xp, attrp->nelems , (uchar *)value, attrp->type);
+    case NC_USHORT:
+          return nc5x_pad_getn_Iushort(&xp,attrp->nelems,(ushort*)value,attrp->type);
+    case NC_UINT:
+          return nc5x_pad_getn_Iuint(&xp,attrp->nelems,(uint*)value,attrp->type);
+    case NC_INT64:
+          return nc5x_pad_getn_Ilonglong(&xp,attrp->nelems,(longlong*)value,attrp->type);
+    case NC_UINT64:
+          return nc5x_pad_getn_Iulonglong(&xp,attrp->nelems,(ulonglong*)value,attrp->type);
     case NC_NAT:
         return NC_EBADTYPE;
     default:

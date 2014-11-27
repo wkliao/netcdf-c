@@ -1564,6 +1564,9 @@ NC_create(const char *path, int cmode, size_t initialsz,
 	model = NC_DISPATCH_NC5;
       else
 #endif
+      if(cmode & NC_64BIT_DATA)
+	model = NC_DISPATCH_NC5;
+      else
       if(cmode & NC_CLASSIC_MODEL)
 	model = NC_DISPATCH_NC3;
    }
@@ -1582,10 +1585,12 @@ NC_create(const char *path, int cmode, size_t initialsz,
 	    model = NC_DISPATCH_NC4;
 	    break;
 #endif
-	 case NC_FORMAT_CDF2:
-	    xcmode |= NC_64BIT_OFFSET;
 	 case NC_FORMAT_CDF5:
 	    xcmode |= NC_64BIT_DATA;
+	    model = NC_DISPATCH_NC5;
+	    break;
+	 case NC_FORMAT_CDF2:
+	    xcmode |= NC_64BIT_OFFSET;
 	    /* fall thru */
 	 case NC_FORMAT_CLASSIC:
 	 default:
@@ -1621,11 +1626,9 @@ NC_create(const char *path, int cmode, size_t initialsz,
 	dispatcher = NCD2_dispatch_table;
       else
 #endif
-#ifdef USE_PNETCDF
       if(model == (NC_DISPATCH_NC5))
 	dispatcher = NC5_dispatch_table;
       else
-#endif
       if(model == (NC_DISPATCH_NC3))
  	dispatcher = NC3_dispatch_table;
       else

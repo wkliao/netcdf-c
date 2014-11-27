@@ -2,8 +2,8 @@
  *	Copyright 1996, University Corporation for Atmospheric Research
  *      See netcdf/COPYRIGHT file for copying and redistribution conditions.
  */
-#ifndef _NC3INTERNAL_
-#define _NC3INTERNAL_
+#ifndef _NC5INTERNAL_
+#define _NC5INTERNAL_
 
 /*
  *	netcdf library 'private' data structures, objects and interfaces
@@ -39,10 +39,11 @@
  * The initial value of ncp->xsz.
  */
 #define MIN_NC_XSZ 32
+#define MIN_NC5_XSZ 48
 
 /* Forward */
 struct ncio;
-typedef struct NC3_INFO NC3_INFO;
+typedef struct NC5_INFO NC5_INFO;
 
 /*
  *  The internal data types
@@ -78,27 +79,24 @@ typedef struct NC_dimarray {
 /* Begin defined in dim.c */
 
 extern void
-free_NC_dim(NC_dim *dimp);
+nc5x_free_NC_dim(NC_dim *dimp);
 
 extern NC_dim *
-new_x_NC_dim(NC_string *name);
+nc5x_new_x_NC_dim(NC_string *name);
 
 extern int
-find_NC_Udim(const NC_dimarray *ncap, NC_dim **dimpp);
+nc5x_find_NC_Udim(const NC_dimarray *ncap, NC_dim **dimpp);
 
 /* dimarray */
 
 extern void
-free_NC_dimarrayV0(NC_dimarray *ncap);
-
-extern void
-free_NC_dimarrayV(NC_dimarray *ncap);
+nc5x_free_NC_dimarrayV(NC_dimarray *ncap);
 
 extern int
-dup_NC_dimarrayV(NC_dimarray *ncap, const NC_dimarray *ref);
+nc5x_dup_NC_dimarrayV(NC_dimarray *ncap, const NC_dimarray *ref);
 
 extern NC_dim *
-elem_NC_dimarray(const NC_dimarray *ncap, size_t elem);
+nc5x_elem_NC_dimarray(const NC_dimarray *ncap, size_t elem);
 
 /* End defined in dim.c */
 
@@ -125,30 +123,24 @@ typedef struct NC_attrarray {
 /* Begin defined in attr.c */
 
 extern void
-free_NC_attr(NC_attr *attrp);
+nc5x_free_NC_attr(NC_attr *attrp);
 
 extern NC_attr *
-new_x_NC_attr(
-	NC_string *strp,
-	nc_type type,
-	size_t nelems);
+nc5x_new_x_NC_attr(NC_string *strp, nc_type type, size_t nelems);
 
 extern NC_attr **
-NC_findattr(const NC_attrarray *ncap, const char *name);
+NC5_findattr(const NC_attrarray *ncap, const char *name);
 
 /* attrarray */
 
 extern void
-free_NC_attrarrayV0(NC_attrarray *ncap);
+nc5x_free_NC_attrarrayV0(NC_attrarray *ncap);
 
 extern void
-free_NC_attrarrayV(NC_attrarray *ncap);
+nc5x_free_NC_attrarrayV(NC_attrarray *ncap);
 
 extern int
-dup_NC_attrarrayV(NC_attrarray *ncap, const NC_attrarray *ref);
-
-extern NC_attr *
-elem_NC_attrarray(const NC_attrarray *ncap, size_t elem);
+nc5x_dup_NC_attrarrayV(NC_attrarray *ncap, const NC_attrarray *ref);
 
 /* End defined in attr.c */
 
@@ -180,45 +172,37 @@ typedef struct NC_vararray {
 	NC_var **value;
 } NC_vararray;
 
-/* Begin defined in lookup3.c */
+/* Begin defined in lookup5.c */
 
 extern uint32_t
 hash_fast(const void *key, size_t length);
 
-/* End defined in lookup3.c */
+/* End defined in lookup5.c */
 
 /* Begin defined in var.c */
 
 extern void
-free_NC_var(NC_var *varp);
+nc5x_free_NC_var(NC_var *varp);
 
 extern NC_var *
-new_x_NC_var(
-	NC_string *strp,
-	size_t ndims);
+nc5x_new_x_NC_var(NC_string *strp, size_t ndims);
 
 /* vararray */
 
 extern void
-free_NC_vararrayV0(NC_vararray *ncap);
-
-extern void
-free_NC_vararrayV(NC_vararray *ncap);
+nc5x_free_NC_vararrayV(NC_vararray *ncap);
 
 extern int
-dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref);
+nc5x_dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref);
 
 extern int
-NC_var_shape(NC_var *varp, const NC_dimarray *dims);
+NC5_var_shape(NC_var *varp, const NC_dimarray *dims);
 
 extern int
-NC_findvar(const NC_vararray *ncap, const char *name, NC_var **varpp);
-
-extern int
-NC_check_vlen(NC_var *varp, size_t vlen_max);
+NC5_check_vlen(NC_var *varp, size_t vlen_max);
 
 extern NC_var *
-NC_lookupvar(NC3_INFO* ncp, int varid);
+NC5_lookupvar(NC5_INFO* ncp, int varid);
 
 /* End defined in var.c */
 
@@ -234,9 +218,9 @@ typedef unsigned short int	ushmem_t;
 typedef short int		 shmem_t;
 #endif
 
-struct NC3_INFO {
+struct NC5_INFO {
 	/* contains the previous NC during redef. */
-	NC3_INFO *old;
+	NC5_INFO *old;
 	/* flags */
 #define NC_CREAT 2	/* in create phase, cleared by ncendef */
 #define NC_INDEF 8	/* in define mode, cleared by ncendef */
@@ -274,6 +258,8 @@ struct NC3_INFO {
 	 */
 	ushmem_t lock[LOCKNUMREC_DIM];
 #endif
+   int pnetcdf_access_mode;
+   int use_parallel;
 };
 
 #define NC_readonly(ncp) \
@@ -310,57 +296,54 @@ struct NC3_INFO {
 	fIsSet((ncp)->flags, NC_NSYNC)
 
 #ifndef LOCKNUMREC
-#  define NC_get_numrecs(nc3i) \
-	((nc3i)->numrecs)
+#  define NC5_get_numrecs(nc5i) \
+	((nc5i)->numrecs)
 
-#  define NC_set_numrecs(nc3i, nrecs) \
-	{(nc3i)->numrecs = (nrecs);}
+#  define NC5_set_numrecs(nc5i, nrecs) \
+	{(nc5i)->numrecs = (nrecs);}
 
-#  define NC_increase_numrecs(nc3i, nrecs) \
-	{if((nrecs) > (nc3i)->numrecs) ((nc3i)->numrecs = (nrecs));}
+#  define NC5_increase_numrecs(nc5i, nrecs) \
+	{if((nrecs) > (nc5i)->numrecs) ((nc5i)->numrecs = (nrecs));}
 #else
-	size_t NC_get_numrecs(const NC3_INFO *nc3i);
-	void   NC_set_numrecs(NC3_INFO *nc3i, size_t nrecs);
-	void   NC_increase_numrecs(NC3_INFO *nc3i, size_t nrecs);
+	size_t NC5_get_numrecs(const NC5_INFO *nc5i);
+	void   NC5_set_numrecs(NC5_INFO *nc5i, size_t nrecs);
+	void   NC5_increase_numrecs(NC5_INFO *nc5i, size_t nrecs);
 #endif
 
 /* Begin defined in nc.c */
 
 extern int
-nc_cktype(nc_type datatype);
+nc5_cktype(int mode, nc_type datatype);
 
 extern size_t
-ncx_howmany(nc_type type, size_t xbufsize);
+nc5x_howmany(nc_type type, size_t xbufsize);
 
 extern int
-read_numrecs(NC3_INFO* ncp);
+nc5x_read_numrecs(NC5_INFO* ncp);
 
 extern int
-write_numrecs(NC3_INFO* ncp);
+nc5x_write_numrecs(NC5_INFO* ncp);
 
 extern int
-NC_sync(NC3_INFO* ncp);
-
-extern int
-NC_calcsize(const NC3_INFO* ncp, off_t *filesizep);
+nc5x_sync(NC5_INFO* ncp);
 
 /* End defined in nc.c */
 /* Begin defined in v1hpg.c */
 
 extern size_t
-ncx_len_NC(const NC3_INFO* ncp, size_t sizeof_off_t);
+nc5x_len_NC(const NC5_INFO* ncp, size_t sizeof_off_t);
 
 extern int
-ncx_put_NC(const NC3_INFO* ncp, void **xpp, off_t offset, size_t extent);
+nc5x_put_NC(const NC5_INFO* ncp, void **xpp, off_t offset, size_t extent);
 
 extern int
-nc_get_NC(NC3_INFO* ncp);
+nc5_get_NC(NC5_INFO* ncp);
 
 /* End defined in v1hpg.c */
 /* Begin defined in putget.c */
 
 extern int
-fill_NC_var(NC3_INFO* ncp, const NC_var *varp, size_t varsize, size_t recno);
+nc5x_fill_NC_var(NC5_INFO* ncp, const NC_var *varp, size_t varsize, size_t recno);
 
 extern int
 nc_inq_rec(int ncid, size_t *nrecvars, int *recvarids, size_t *recsizes);
@@ -374,7 +357,7 @@ nc_put_rec(int ncid, size_t recnum, void *const *datap);
 /* End defined in putget.c */
 
 /* Define accessors for the dispatchdata */
-#define NC3_DATA(nc) ((NC3_INFO*)(nc)->dispatchdata)
-#define NC3_DATA_SET(nc,data) ((nc)->dispatchdata = (void*)(data))
+#define NC5_DATA(nc) ((NC5_INFO*)(nc)->dispatchdata)
+#define NC5_DATA_SET(nc,data) ((nc)->dispatchdata = (void*)(data))
 
-#endif /* _NC3INTERNAL_ */
+#endif /* _NC5INTERNAL_ */

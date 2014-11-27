@@ -111,7 +111,7 @@ create_file(char *file_name, int fill_mode, size_t* sizehintp)
    stat = nc_create_par(file_name, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
    /* PnetCDF does not support fill mode */
 #else
-   stat = nc__create(file_name, NC_CLOBBER, default_initialsize, sizehintp, &ncid);
+   stat = nc__create(file_name, NC_CLOBBER|NC_64BIT_DATA, default_initialsize, sizehintp, &ncid);
    check_err(stat,__LINE__,__FILE__);
    stat = nc_set_fill(ncid, fill_mode, &old_fill_mode);
 #endif

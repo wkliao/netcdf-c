@@ -1,9 +1,11 @@
-/*
- *	Copyright 1996, University Corporation for Atmospheric Research
- *      See netcdf/COPYRIGHT file for copying and redistribution conditions.
- */
+/*********************************************************************
+ *   Copyright 1993, UCAR/Unidata
+ *   See netcdf/COPYRIGHT file for copying and redistribution conditions.
+ *   $Id$
+ *********************************************************************/
 
-#include <config.h>
+/* WARNING: Order of mpi.h, nc.h, and pnetcdf.h is important */
+#include "config.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -15,11 +17,30 @@
 #include <unistd.h>
 #endif
 
-#include "nc3internal.h"
+#ifdef USE_PARALLEL
+#include <mpi.h>
+#endif
+
+#include "nc5internal.h"
 #include "ncdispatch.h"
-#include "nc3dispatch.h"
+#include "nc5dispatch.h"
 #include "rnd.h"
-#include "ncx.h"
+#include "nc5ncx.h"
+
+#ifdef USE_PARALLEL
+/* Must follow netcdf.h */
+#include <pnetcdf.h>
+#endif
+
+/* Define accessors for the dispatchdata */
+#define NC5_DATA(nc) ((NC5_INFO*)(nc)->dispatchdata)
+#define NC5_DATA_SET(nc,data) ((nc)->dispatchdata = (void*)(data))
+
+/* Cannot have NC_MPIPOSIX flag, ignore NC_MPIIO as PnetCDF use MPIIO */
+#define LEGAL_CREATE_FLAGS (NC_NOCLOBBER | NC_64BIT_OFFSET | NC_CLASSIC_MODEL | NC_SHARE | NC_MPIIO | NC_LOCK | NC_PNETCDF | NC_64BIT_DATA)
+
+#define LEGAL_OPEN_FLAGS (NC_WRITE | NC_NOCLOBBER | NC_SHARE | NC_MPIIO | NC_LOCK | NC_PNETCDF | NC_CLASSIC_MODEL | NC_64BIT_OFFSET | NC_64BIT_DATA)
+
 
 /* These have to do with version numbers. */
 #define MAGIC_NUM_LEN 4
@@ -28,54 +49,56 @@
 #define VER_HDF5 3
 
 static void
-free_NC3INFO(NC3_INFO *nc3)
+free_NC5INFO(NC5_INFO *nc5)
 {
-	if(nc3 == NULL)
+	if(nc5 == NULL)
 		return;
-	free_NC_dimarrayV(&nc3->dims);
-	free_NC_attrarrayV(&nc3->attrs);
-	free_NC_vararrayV(&nc3->vars);
+	nc5x_free_NC_dimarrayV(&nc5->dims);
+	nc5x_free_NC_attrarrayV(&nc5->attrs);
+	nc5x_free_NC_vararrayV(&nc5->vars);
 #if _CRAYMPP && defined(LOCKNUMREC)
-	shfree(nc3);
+	shfree(nc5);
 #else
-	free(nc3);
+	free(nc5);
 #endif /* _CRAYMPP && LOCKNUMREC */
 }
 
-static NC3_INFO *
-new_NC3INFO(const size_t *chunkp)
+static NC5_INFO *
+new_NC5INFO(const size_t *chunkp)
 {
-	NC3_INFO *ncp;
-	ncp = (NC3_INFO*)calloc(1,sizeof(NC3_INFO));
+	NC5_INFO *ncp;
+	ncp = (NC5_INFO*)calloc(1,sizeof(NC5_INFO));
 	if(ncp == NULL) return ncp;
+/* delay this setting
 	ncp->xsz = MIN_NC_XSZ;
-	assert(ncp->xsz == ncx_len_NC(ncp,0));
+	assert(ncp->xsz == nc5x_len_NC(ncp,0));
+*/
         ncp->chunk = chunkp != NULL ? *chunkp : NC_SIZEHINT_DEFAULT;
 	return ncp;
 }
 
-static NC3_INFO *
-dup_NC3INFO(const NC3_INFO *ref)
+static NC5_INFO *
+dup_NC5INFO(const NC5_INFO *ref)
 {
-	NC3_INFO *ncp;
-	ncp = (NC3_INFO*)calloc(1,sizeof(NC3_INFO));
+	NC5_INFO *ncp;
+	ncp = (NC5_INFO*)calloc(1,sizeof(NC5_INFO));
 	if(ncp == NULL) return ncp;
 
-	if(dup_NC_dimarrayV(&ncp->dims, &ref->dims) != NC_NOERR)
+	if(nc5x_dup_NC_dimarrayV(&ncp->dims, &ref->dims) != NC_NOERR)
 		goto err;
-	if(dup_NC_attrarrayV(&ncp->attrs, &ref->attrs) != NC_NOERR)
+	if(nc5x_dup_NC_attrarrayV(&ncp->attrs, &ref->attrs) != NC_NOERR)
 		goto err;
-	if(dup_NC_vararrayV(&ncp->vars, &ref->vars) != NC_NOERR)
+	if(nc5x_dup_NC_vararrayV(&ncp->vars, &ref->vars) != NC_NOERR)
 		goto err;
 
 	ncp->xsz = ref->xsz;
 	ncp->begin_var = ref->begin_var;
 	ncp->begin_rec = ref->begin_rec;
 	ncp->recsize = ref->recsize;
-	NC_set_numrecs(ncp, NC_get_numrecs(ref));
+	NC5_set_numrecs(ncp, NC5_get_numrecs(ref));
 	return ncp;
 err:
-	free_NC3INFO(ncp);
+	free_NC5INFO(ncp);
 	return NULL;
 }
 
@@ -87,18 +110,16 @@ NCcktype()
  * Sense of the return is changed.
  */
 int
-nc_cktype(nc_type type)
+nc5_cktype(int mode, nc_type type)
 {
-	switch((int)type){
-	case NC_BYTE:
-	case NC_CHAR:
-	case NC_SHORT:
-	case NC_INT:
-	case NC_FLOAT:
-	case NC_DOUBLE:
-		return(NC_NOERR);
-	}
-	return(NC_EBADTYPE);
+    if (mode & NC_64BIT_OFFSET) { /* CDF-1 and CDF-2 format */
+        if (type >= NC_BYTE && type <= NC_DOUBLE) return NC_NOERR;
+	return NC_EBADTYPE;
+    }
+    else {  /* CDF-5 format */
+        if (type >= NC_BYTE && type <= NC_STRING) return NC_NOERR;
+	return NC_EBADTYPE;
+    }
 }
 
 
@@ -107,11 +128,12 @@ nc_cktype(nc_type type)
  * will fit into xbufsize?
  */
 size_t
-ncx_howmany(nc_type type, size_t xbufsize)
+nc5x_howmany(nc_type type, size_t xbufsize)
 {
 	switch(type){
 	case NC_BYTE:
 	case NC_CHAR:
+	case NC_UBYTE:
 		return xbufsize;
 	case NC_SHORT:
 		return xbufsize/X_SIZEOF_SHORT;
@@ -121,8 +143,16 @@ ncx_howmany(nc_type type, size_t xbufsize)
 		return xbufsize/X_SIZEOF_FLOAT;
 	case NC_DOUBLE:
 		return xbufsize/X_SIZEOF_DOUBLE;
+	case NC_USHORT:
+		return xbufsize/X_SIZEOF_USHORT;
+	case NC_UINT:
+		return xbufsize/X_SIZEOF_UINT;
+	case NC_INT64:
+		return xbufsize/X_SIZEOF_LONGLONG;
+	case NC_UINT64:
+		return xbufsize/X_SIZEOF_ULONGLONG;
 	default:
-	        assert("ncx_howmany: Bad type" == 0);
+	        assert("nc5x_howmany: Bad type" == 0);
 		return(0);
 	}
 }
@@ -134,7 +164,7 @@ ncx_howmany(nc_type type, size_t xbufsize)
  * update 'begin_rec' as well.
  */
 static int
-NC_begins(NC3_INFO* ncp,
+NC_begins(NC5_INFO* ncp,
 	size_t h_minfree, size_t v_align,
 	size_t v_minfree, size_t r_align)
 {
@@ -151,13 +181,13 @@ NC_begins(NC3_INFO* ncp,
 	if(r_align == NC_ALIGN_CHUNK)
 		r_align = ncp->chunk;
 
-	if (fIsSet(ncp->flags, NC_64BIT_OFFSET)) {
+	if (fIsSet(ncp->flags, NC_64BIT_OFFSET) || fIsSet(ncp->flags, NC_64BIT_DATA)) {
 	  sizeof_off_t = 8;
 	} else {
 	  sizeof_off_t = 4;
 	}
 
-	ncp->xsz = ncx_len_NC(ncp,sizeof_off_t);
+	ncp->xsz = nc5x_len_NC(ncp,sizeof_off_t);
 
 	if(ncp->vars.nelems == 0)
 		return NC_NOERR;
@@ -307,7 +337,7 @@ fprintf(stderr, "    REC %d %s: %ld\n", ii, (*vpp)->name->cp, (long)index);
 	    }
 	}
 	if(NC_IsNew(ncp))
-		NC_set_numrecs(ncp, 0);
+		NC5_set_numrecs(ncp, 0);
 	return NC_NOERR;
 }
 
@@ -317,29 +347,38 @@ fprintf(stderr, "    REC %d %s: %ld\n", ii, (*vpp)->name->cp, (long)index);
  * (A relatively expensive way to do things.)
  */
 int
-read_numrecs(NC3_INFO *ncp)
+nc5x_read_numrecs(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 	const void *xp = NULL;
-	size_t nrecs = NC_get_numrecs(ncp);
+	size_t new_nrecs, old_nrecs = NC5_get_numrecs(ncp);
+	size_t nc_numrecs_extent=4; /* CDF-1 and CDF-2 */
 
 	assert(!NC_indef(ncp));
 
+	if (fIsSet(ncp->flags, NC_64BIT_DATA))
+		nc_numrecs_extent = 8; /* CDF-5 */
+
 #define NC_NUMRECS_OFFSET 4
-#define NC_NUMRECS_EXTENT 4
 	status = ncio_get(ncp->nciop,
-		 NC_NUMRECS_OFFSET, NC_NUMRECS_EXTENT, 0, (void **)&xp);
+		 NC_NUMRECS_OFFSET, nc_numrecs_extent, 0, (void **)&xp);
 					/* cast away const */
 	if(status != NC_NOERR)
 		return status;
 
-	status = ncx_get_size_t(&xp, &nrecs);
+	if (fIsSet(ncp->flags, NC_64BIT_DATA)) {
+		long long tmp=0;
+		status = nc5x_get_int64(&xp, &tmp);
+		new_nrecs = tmp;
+        }
+	else
+		status = nc5x_get_size_t(&xp, &new_nrecs);
 
 	(void) ncio_rel(ncp->nciop, NC_NUMRECS_OFFSET, 0);
 
-	if(status == NC_NOERR)
+	if(status == NC_NOERR && old_nrecs != new_nrecs)
 	{
-		NC_set_numrecs(ncp, nrecs);
+		NC5_set_numrecs(ncp, new_nrecs);
 		fClr(ncp->flags, NC_NDIRTY);
 	}
 
@@ -352,22 +391,29 @@ read_numrecs(NC3_INFO *ncp)
  * (A relatively expensive way to do things.)
  */
 int
-write_numrecs(NC3_INFO *ncp)
+nc5x_write_numrecs(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 	void *xp = NULL;
+	size_t nc_numrecs_extent=4; /* CDF-1 and CDF-2 */
 
 	assert(!NC_readonly(ncp));
 	assert(!NC_indef(ncp));
 
+	if (fIsSet(ncp->flags, NC_64BIT_DATA))
+		nc_numrecs_extent = 8; /* CDF-5 */
+
 	status = ncio_get(ncp->nciop,
-		 NC_NUMRECS_OFFSET, NC_NUMRECS_EXTENT, RGN_WRITE, &xp);
+		 NC_NUMRECS_OFFSET, nc_numrecs_extent, RGN_WRITE, &xp);
 	if(status != NC_NOERR)
 		return status;
 
 	{
-		const size_t nrecs = NC_get_numrecs(ncp);
-		status = ncx_put_size_t(&xp, &nrecs);
+		const size_t nrecs = NC5_get_numrecs(ncp);
+		if (fIsSet(ncp->flags, NC_64BIT_DATA))
+			status = nc5x_put_int64(&xp, nrecs);
+		else
+			status = nc5x_put_size_t(&xp, &nrecs);
 	}
 
 	(void) ncio_rel(ncp->nciop, NC_NUMRECS_OFFSET, RGN_MODIFIED);
@@ -384,15 +430,15 @@ write_numrecs(NC3_INFO *ncp)
  * It is expensive.
  */
 static int
-read_NC(NC3_INFO *ncp)
+read_NC(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 
-	free_NC_dimarrayV(&ncp->dims);
-	free_NC_attrarrayV(&ncp->attrs);
-	free_NC_vararrayV(&ncp->vars);
+	nc5x_free_NC_dimarrayV(&ncp->dims);
+	nc5x_free_NC_attrarrayV(&ncp->attrs);
+	nc5x_free_NC_vararrayV(&ncp->vars);
 
-	status = nc_get_NC(ncp);
+	status = nc5_get_NC(ncp);
 
 	if(status == NC_NOERR)
 		fClr(ncp->flags, NC_NDIRTY | NC_HDIRTY);
@@ -405,13 +451,13 @@ read_NC(NC3_INFO *ncp)
  * Write out the header
  */
 static int
-write_NC(NC3_INFO *ncp)
+write_NC(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 
 	assert(!NC_readonly(ncp));
 
-	status = ncx_put_NC(ncp, NULL, 0, 0);
+	status = nc5x_put_NC(ncp, NULL, 0, 0);
 
 	if(status == NC_NOERR)
 		fClr(ncp->flags, NC_NDIRTY | NC_HDIRTY);
@@ -424,7 +470,7 @@ write_NC(NC3_INFO *ncp)
  * Write the header or the numrecs if necessary.
  */
 int
-NC_sync(NC3_INFO *ncp)
+nc5x_sync(NC5_INFO *ncp)
 {
 	assert(!NC_readonly(ncp));
 
@@ -436,7 +482,7 @@ NC_sync(NC3_INFO *ncp)
 
 	if(NC_ndirty(ncp))
 	{
-		return write_numrecs(ncp);
+		return nc5x_write_numrecs(ncp);
 	}
 	/* else */
 
@@ -448,7 +494,7 @@ NC_sync(NC3_INFO *ncp)
  * Initialize the 'non-record' variables.
  */
 static int
-fillerup(NC3_INFO *ncp)
+fillerup(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 	size_t ii;
@@ -467,7 +513,7 @@ fillerup(NC3_INFO *ncp)
 			continue;
 		}
 
-		status = fill_NC_var(ncp, *varpp, (*varpp)->len, 0);
+		status = nc5x_fill_NC_var(ncp, *varpp, (*varpp)->len, 0);
 		if(status != NC_NOERR)
 			break;
 	}
@@ -479,11 +525,11 @@ fillerup(NC3_INFO *ncp)
 /*
  */
 static int
-fill_added_recs(NC3_INFO *gnu, NC3_INFO *old)
+fill_added_recs(NC5_INFO *gnu, NC5_INFO *old)
 {
 	NC_var ** const gnu_varpp = (NC_var **)gnu->vars.value;
 
-	const int old_nrecs = (int) NC_get_numrecs(old);
+	const int old_nrecs = (int) NC5_get_numrecs(old);
 	int recno = 0;
 	NC_var **vpp = gnu_varpp;
 	NC_var *const *const end = &vpp[gnu->vars.nelems];
@@ -511,7 +557,7 @@ fill_added_recs(NC3_INFO *gnu, NC3_INFO *old)
 			/* else */
 			{
 			    size_t varsize = numrecvars == 1 ? gnu->recsize :  gnu_varp->len;
-			    const int status = fill_NC_var(gnu, gnu_varp, varsize, recno);
+			    const int status = nc5x_fill_NC_var(gnu, gnu_varp, varsize, recno);
 			    if(status != NC_NOERR)
 				return status;
 			}
@@ -523,7 +569,7 @@ fill_added_recs(NC3_INFO *gnu, NC3_INFO *old)
 /*
  */
 static int
-fill_added(NC3_INFO *gnu, NC3_INFO *old)
+fill_added(NC5_INFO *gnu, NC5_INFO *old)
 {
 	NC_var ** const gnu_varpp = (NC_var **)gnu->vars.value;
 	int varid = (int)old->vars.nelems;
@@ -538,7 +584,7 @@ fill_added(NC3_INFO *gnu, NC3_INFO *old)
 		}
 		/* else */
 		{
-		const int status = fill_NC_var(gnu, gnu_varp, gnu_varp->len, 0);
+		const int status = nc5x_fill_NC_var(gnu, gnu_varp, gnu_varp->len, 0);
 		if(status != NC_NOERR)
 			return status;
 		}
@@ -553,7 +599,7 @@ fill_added(NC3_INFO *gnu, NC3_INFO *old)
  * Fill as needed.
  */
 static int
-move_recs_r(NC3_INFO *gnu, NC3_INFO *old)
+move_recs_r(NC5_INFO *gnu, NC5_INFO *old)
 {
 	int status;
 	int recno;
@@ -564,7 +610,7 @@ move_recs_r(NC3_INFO *gnu, NC3_INFO *old)
 	NC_var *old_varp;
 	off_t gnu_off;
 	off_t old_off;
-	const size_t old_nrecs = NC_get_numrecs(old);
+	const size_t old_nrecs = NC5_get_numrecs(old);
 
 	/* Don't parallelize this loop */
 	for(recno = (int)old_nrecs -1; recno >= 0; recno--)
@@ -599,7 +645,7 @@ move_recs_r(NC3_INFO *gnu, NC3_INFO *old)
 	}
 	}
 
-	NC_set_numrecs(gnu, old_nrecs);
+	NC5_set_numrecs(gnu, old_nrecs);
 
 	return NC_NOERR;
 }
@@ -610,7 +656,7 @@ move_recs_r(NC3_INFO *gnu, NC3_INFO *old)
  * Fill as needed.
  */
 static int
-move_vars_r(NC3_INFO *gnu, NC3_INFO *old)
+move_vars_r(NC5_INFO *gnu, NC5_INFO *old)
 {
 	int err, status=NC_NOERR;
 	int varid;
@@ -652,7 +698,7 @@ move_vars_r(NC3_INFO *gnu, NC3_INFO *old)
  * (product of non-rec dim sizes too large), else return NC_NOERR.
  */
 static int
-NC_check_vlens(NC3_INFO *ncp)
+NC_check_vlens(NC5_INFO *ncp)
 {
     NC_var **vpp;
     /* maximum permitted variable size (or size of one record's worth
@@ -667,7 +713,11 @@ NC_check_vlens(NC3_INFO *ncp)
     if(ncp->vars.nelems == 0)
 	return NC_NOERR;
 
-    if ((ncp->flags & NC_64BIT_OFFSET) && sizeof(off_t) > 4) {
+    if (ncp->flags & NC_64BIT_DATA) {
+	/* CDF5 format allows many large vars */
+        return NC_NOERR;
+    }
+    else if ((ncp->flags & NC_64BIT_OFFSET) && sizeof(off_t) > 4) {
 	/* CDF2 format and LFS */
 	vlen_max = X_UINT_MAX - 3; /* "- 3" handles rounded-up size */
     } else {
@@ -681,7 +731,7 @@ NC_check_vlens(NC3_INFO *ncp)
     for (ii = 0; ii < ncp->vars.nelems; ii++, vpp++) {
 	if( !IS_RECVAR(*vpp) ) {
 	    last = 0;
-	    if( NC_check_vlen(*vpp, vlen_max) == 0 ) {
+	    if( NC5_check_vlen(*vpp, vlen_max) == 0 ) {
 		large_vars_count++;
 		last = 1;
 	    }
@@ -709,7 +759,7 @@ NC_check_vlens(NC3_INFO *ncp)
 	for (ii = 0; ii < ncp->vars.nelems; ii++, vpp++) {
 	    if( IS_RECVAR(*vpp) ) {
 		last = 0;
-		if( NC_check_vlen(*vpp, vlen_max) == 0 ) {
+		if( NC5_check_vlen(*vpp, vlen_max) == 0 ) {
 		    large_vars_count++;
 		    last = 1;
 		}
@@ -735,7 +785,7 @@ NC_check_vlens(NC3_INFO *ncp)
  *  Flushes I/O buffers.
  */
 static int
-NC_endef(NC3_INFO *ncp,
+NC_endef(NC5_INFO *ncp,
 	size_t h_minfree, size_t v_align,
 	size_t v_minfree, size_t r_align)
 {
@@ -824,7 +874,7 @@ NC_endef(NC3_INFO *ncp,
 
 	if(ncp->old != NULL)
 	{
-		free_NC3INFO(ncp->old);
+		free_NC5INFO(ncp->old);
 		ncp->old = NULL;
 	}
 
@@ -848,12 +898,11 @@ NC_init_pe(NC *ncp, int basepe) {
 }
 #endif
 
-
 /*
  * Compute the expected size of the file.
  */
-int
-NC_calcsize(const NC3_INFO *ncp, off_t *calcsizep)
+static int
+NC_calcsize(const NC5_INFO *ncp, off_t *calcsizep)
 {
 	NC_var **vpp = (NC_var **)ncp->vars.value;
 	NC_var *const *const end = &vpp[ncp->vars.nelems];
@@ -881,7 +930,7 @@ NC_calcsize(const NC3_INFO *ncp, off_t *calcsizep)
 	    if(last_fix->len == X_UINT_MAX) { /* huge last fixed var */
           int i;
           varsize = 1;
-          for(i = 0; i < last_fix->ndims, last_fix->shape != NULL; i++ ) {
+          for(i = 0; i < last_fix->ndims && last_fix->shape != NULL; i++ ) {
             varsize *= last_fix->shape[i];
           }
 	    }
@@ -894,35 +943,10 @@ NC_calcsize(const NC3_INFO *ncp, off_t *calcsizep)
 	return NC_NOERR;
 }
 
-/* Public */
+/**************************************************/
 
-#if 0 /* no longer needed */
-int NC3_new_nc(NC3_INFO** ncpp)
-{
-	NC *nc;
-	NC3_INFO* nc3;
-
-#if _CRAYMPP && defined(LOCKNUMREC)
-	ncp = (NC *) shmalloc(sizeof(NC));
-#else
-	ncp = (NC *) malloc(sizeof(NC));
-#endif /* _CRAYMPP && LOCKNUMREC */
-	if(ncp == NULL)
-		return NC_ENOMEM;
-	(void) memset(ncp, 0, sizeof(NC));
-
-	ncp->xsz = MIN_NC_XSZ;
-	assert(ncp->xsz == ncx_len_NC(ncp,0));
-
-        if(ncpp) *ncpp = ncp;
-        return NC_NOERR;
-
-}
-#endif
-
-/* WARNING: SIGNATURE CHANGE */
-int
-NC3_create(const char *path, int ioflags,
+static int
+nc5_create_file(const char *path, int ioflags,
 		size_t initialsz, int basepe,
 		size_t *chunksizehintp,
 		int use_parallel, void* parameters,
@@ -931,17 +955,17 @@ NC3_create(const char *path, int ioflags,
 	int status;
 	void *xp = NULL;
 	int sizeof_off_t = 0;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 
-	/* Create our specific NC3_INFO instance */
-	nc3 = new_NC3INFO(chunksizehintp);
+	/* Create our specific NC5_INFO instance */
+	nc5 = new_NC5INFO(chunksizehintp);
 
 #if ALWAYS_NC_SHARE /* DEBUG */
 	fSet(ioflags, NC_SHARE);
 #endif
 
 #if defined(LOCKNUMREC) /* && _CRAYMPP */
-	if (status = NC_init_pe(nc3, basepe)) {
+	if (status = NC_init_pe(nc5, basepe)) {
 		return status;
 	}
 #else
@@ -949,29 +973,36 @@ NC3_create(const char *path, int ioflags,
 	 * !_CRAYMPP, only pe 0 is valid
 	 */
 	if(basepe != 0) {
-      free(nc3);
-      return NC_EINVAL;
-    }
+		free(nc5);
+		return NC_EINVAL;
+	}
 #endif
 
-	assert(nc3->flags == 0);
+	assert(nc5->flags == 0);
 
 	/* Apply default create format. */
-	if (nc_get_default_format() == NC_FORMAT_64BIT)
+	if (nc_get_default_format() == NC_FORMAT_CDF2)
 	  ioflags |= NC_64BIT_OFFSET;
+	else if (nc_get_default_format() == NC_FORMAT_CDF5)
+	  ioflags |= NC_64BIT_DATA;
 
+	nc5->xsz = MIN_NC_XSZ;
 	if (fIsSet(ioflags, NC_64BIT_OFFSET)) {
-	  fSet(nc3->flags, NC_64BIT_OFFSET);
-	  sizeof_off_t = 8;
+		fSet(nc5->flags, NC_64BIT_OFFSET);
+		sizeof_off_t = 8;
+	} else if (fIsSet(ioflags, NC_64BIT_DATA)) {
+		fSet(nc5->flags, NC_64BIT_DATA);
+		sizeof_off_t = 8;
+		nc5->xsz = MIN_NC5_XSZ; /* CDF-5 has minimum 16 extra bytes */
 	} else {
-	  sizeof_off_t = 4;
+		sizeof_off_t = 4;
 	}
 
-	assert(nc3->xsz == ncx_len_NC(nc3,sizeof_off_t));
+	assert(nc5->xsz == nc5x_len_NC(nc5,sizeof_off_t));
 
         status =  ncio_create(path, ioflags, initialsz,
-			      0, nc3->xsz, &nc3->chunk,
-			      &nc3->nciop, &xp);
+			      0, nc5->xsz, &nc5->chunk,
+			      &nc5->nciop, &xp);
 	if(status != NC_NOERR)
 	{
 		/* translate error status */
@@ -980,9 +1011,9 @@ NC3_create(const char *path, int ioflags,
 		goto unwind_alloc;
 	}
 
-	fSet(nc3->flags, NC_CREAT);
+	fSet(nc5->flags, NC_CREAT);
 
-	if(fIsSet(nc3->nciop->ioflags, NC_SHARE))
+	if(fIsSet(nc5->nciop->ioflags, NC_SHARE))
 	{
 		/*
 		 * NC_SHARE implies sync up the number of records as well.
@@ -991,80 +1022,113 @@ NC3_create(const char *path, int ioflags,
 		 * automatically.  Some sort of IPC (external to this package)
 		 * would be used to trigger a call to nc_sync().
 		 */
-		fSet(nc3->flags, NC_NSYNC);
+		fSet(nc5->flags, NC_NSYNC);
 	}
 
-	status = ncx_put_NC(nc3, &xp, sizeof_off_t, nc3->xsz);
+	status = nc5x_put_NC(nc5, &xp, sizeof_off_t, nc5->xsz);
 	if(status != NC_NOERR)
 		goto unwind_ioc;
 
 	if(chunksizehintp != NULL)
-		*chunksizehintp = nc3->chunk;
+		*chunksizehintp = nc5->chunk;
 
-	/* Link nc3 and nc */
-        NC3_DATA_SET(nc,nc3);
-	nc->int_ncid = nc3->nciop->fd;
+	/* Link nc5 and nc */
+        NC5_DATA_SET(nc,nc5);
+	nc->int_ncid = nc5->nciop->fd;
 
 	return NC_NOERR;
 
 unwind_ioc:
-	if(nc3 != NULL) {
-	    (void) ncio_close(nc3->nciop, 1); /* N.B.: unlink */
-	    nc3->nciop = NULL;
+	if(nc5 != NULL) {
+	    (void) ncio_close(nc5->nciop, 1); /* N.B.: unlink */
+	    nc5->nciop = NULL;
 	}
 	/*FALLTHRU*/
 unwind_alloc:
-	free_NC3INFO(nc3);
+	free_NC5INFO(nc5);
 	if(nc)
-            NC3_DATA_SET(nc,NULL);
+            NC5_DATA_SET(nc,NULL);
 	return status;
 }
 
-#if 0
-/* This function sets a default create flag that will be logically
-   or'd to whatever flags are passed into nc_create for all future
-   calls to nc_create.
-   Valid default create flags are NC_64BIT_OFFSET, NC_CLOBBER,
-   NC_LOCK, NC_SHARE. */
 int
-nc_set_default_format(int format, int *old_formatp)
+NC5_create(const char *path, int cmode,
+	  size_t initialsz, int basepe, size_t *chunksizehintp,
+	  int use_parallel, void* mpidata,
+	  struct NC_Dispatch* table, NC* nc)
 {
-    /* Return existing format if desired. */
-    if (old_formatp)
-      *old_formatp = default_create_format;
+#ifdef USE_PARALLEL
+    if (use_parallel) {
+        int res, default_format;
+        NC5_INFO* nc5;
 
-    /* Make sure only valid format is set. */
-#ifdef USE_NETCDF4
-    if (format != NC_FORMAT_CLASSIC && format != NC_FORMAT_64BIT &&
-	format != NC_FORMAT_NETCDF4 && format != NC_FORMAT_NETCDF4_CLASSIC)
-      return NC_EINVAL;
-#else
-    if (format != NC_FORMAT_CLASSIC && format != NC_FORMAT_64BIT)
-      return NC_EINVAL;
+        /* Check the cmode for only valid flags*/
+        if(cmode & ~LEGAL_CREATE_FLAGS)
+	    return NC_EINVAL;
+
+        /* Cannot have both NC_64BIT_OFFSET & NC_64BIT_DATA */
+        if((cmode & (NC_64BIT_OFFSET|NC_64BIT_DATA)) == (NC_64BIT_OFFSET|NC_64BIT_DATA))
+	    return NC_EINVAL;
+
+        /* Create our specific NC5_INFO instance */
+	nc5 = new_NC5INFO(chunksizehintp);
+        if(nc5 == NULL) return NC_ENOMEM;
+
+        nc5->use_parallel = use_parallel;
+
+        /* Link nc5 and nc */
+        NC5_DATA_SET(nc,nc5);
+
+        default_format = nc_get_default_format();
+        /* if (default_format == NC_FORMAT_CLASSIC) then we respect the format set in cmode */
+        if (default_format == NC_FORMAT_CDF2) {
+            if (! (cmode & NC_64BIT_OFFSET)) /* check if cmode has NC_64BIT_OFFSET already */
+                cmode |= NC_64BIT_OFFSET;
+        }
+        else if (default_format == NC_FORMAT_CDF5) {
+            if (! (cmode & NC_64BIT_DATA)) /* check if cmode has NC_64BIT_DATA already */
+                cmode |= NC_64BIT_DATA;
+        }
+
+        /* PnetCDF recognizes the flags below for create and ignores NC_LOCK and
+         * NC_SHARE */
+        cmode &= (NC_WRITE | NC_NOCLOBBER | NC_SHARE | NC_64BIT_OFFSET | NC_64BIT_DATA);
+
+        /* No MPI environment initialized */
+        if (mpidata == NULL) return NC_ENOPAR;
+
+        res = ncmpi_create(((NC_MPI_INFO *)mpidata)->comm, path, cmode,
+                           ((NC_MPI_INFO *)mpidata)->info, &(nc->int_ncid));
+
+        if(res != NC_NOERR && nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
+        return res;
+    }
 #endif
-    default_create_format = format;
-    return NC_NOERR;
+printf("%s line %d calling nc5_create_file\n",__FILE__,__LINE__);
+    /* sequential program to create a file */
+    return nc5_create_file(path, cmode, initialsz, basepe, chunksizehintp,
+			   use_parallel, mpidata, table, nc);
+
 }
-#endif
 
-int
-NC3_open(const char * path, int ioflags,
+static int
+nc5_open_file(const char * path, int ioflags,
                int basepe, size_t *chunksizehintp,
 	       int use_parallel,void* parameters,
                NC_Dispatch* dispatch, NC* nc)
 {
 	int status;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 
-	/* Create our specific NC3_INFO instance */
-	nc3 = new_NC3INFO(chunksizehintp);
+	/* Create our specific NC5_INFO instance */
+	nc5 = new_NC5INFO(chunksizehintp);
 
 #if ALWAYS_NC_SHARE /* DEBUG */
 	fSet(ioflags, NC_SHARE);
 #endif
 
 #if defined(LOCKNUMREC) /* && _CRAYMPP */
-	if (status = NC_init_pe(nc3, basepe)) {
+	if (status = NC_init_pe(nc5, basepe)) {
 		return status;
 	}
 #else
@@ -1072,18 +1136,18 @@ NC3_open(const char * path, int ioflags,
 	 * !_CRAYMPP, only pe 0 is valid
 	 */
 	if(basepe != 0) {
-      free(nc3);
+      free(nc5);
       return NC_EINVAL;
     }
 #endif
 
-	status = ncio_open(path, ioflags, 0, 0, &nc3->chunk, &nc3->nciop, 0);
+	status = ncio_open(path, ioflags, 0, 0, &nc5->chunk, &nc5->nciop, 0);
 	if(status)
 		goto unwind_alloc;
 
-	assert(nc3->flags == 0);
+	assert(nc5->flags == 0);
 
-	if(fIsSet(nc3->nciop->ioflags, NC_SHARE))
+	if(fIsSet(nc5->nciop->ioflags, NC_SHARE))
 	{
 		/*
 		 * NC_SHARE implies sync up the number of records as well.
@@ -1092,110 +1156,200 @@ NC3_open(const char * path, int ioflags,
 		 * automatically.  Some sort of IPC (external to this package)
 		 * would be used to trigger a call to nc_sync().
 		 */
-		fSet(nc3->flags, NC_NSYNC);
+		fSet(nc5->flags, NC_NSYNC);
 	}
 
-	status = nc_get_NC(nc3);
+	status = nc5_get_NC(nc5);
 	if(status != NC_NOERR)
 		goto unwind_ioc;
 
 	if(chunksizehintp != NULL)
-		*chunksizehintp = nc3->chunk;
+		*chunksizehintp = nc5->chunk;
 
-	/* Link nc3 and nc */
-        NC3_DATA_SET(nc,nc3);
-	nc->int_ncid = nc3->nciop->fd;
+	/* Link nc5 and nc */
+        NC5_DATA_SET(nc,nc5);
+	nc->int_ncid = nc5->nciop->fd;
 
 	return NC_NOERR;
 
 unwind_ioc:
-	if(nc3) {
-    	    (void) ncio_close(nc3->nciop, 0);
-	    nc3->nciop = NULL;
+	if(nc5) {
+    	    (void) ncio_close(nc5->nciop, 0);
+	    nc5->nciop = NULL;
 	}
 	/*FALLTHRU*/
 unwind_alloc:
-	free_NC3INFO(nc3);
+	free_NC5INFO(nc5);
 	if(nc)
-            NC3_DATA_SET(nc,NULL);
+            NC5_DATA_SET(nc,NULL);
 	return status;
 }
 
 int
-NC3__enddef(int ncid,
-	size_t h_minfree, size_t v_align,
-	size_t v_minfree, size_t r_align)
+NC5_open(const char *path, int cmode,
+	    int basepe, size_t *chunksizehintp,
+	    int use_parallel, void* mpidata,
+	    struct NC_Dispatch* table, NC* nc)
+{
+#ifdef USE_PARALLEL
+    if (use_parallel) {
+        int res;
+        NC5_INFO* nc5;
+
+        /* Check the cmode for only valid flags*/
+        if(cmode & ~LEGAL_OPEN_FLAGS)
+	    return NC_EINVAL;
+
+        /* Create our specific NC5_INFO instance */
+	nc5 = new_NC5INFO(chunksizehintp);
+        if(nc5 == NULL) return NC_ENOMEM;
+
+        nc5->use_parallel = use_parallel;
+
+        /* Link nc5 and nc */
+        NC5_DATA_SET(nc,nc5);
+
+        /* PnetCDF recognizes the flags NC_WRITE and NC_NOCLOBBER for file open
+         * and ignores NC_LOCK, NC_SHARE, NC_64BIT_OFFSET, and NC_64BIT_DATA.
+         * Ignoring the NC_64BIT_OFFSET and NC_64BIT_DATA flags is because the
+         * file is already in one of the CDF-formats, and setting these 2 flags
+         * will not change the format of that file.
+         */
+        cmode &= (NC_WRITE | NC_NOCLOBBER);
+
+        /* No MPI environment initialized */
+        if (mpidata == NULL) return NC_ENOPAR;
+
+        res = ncmpi_open(((NC_MPI_INFO *)mpidata)->comm, path, cmode,
+                         ((NC_MPI_INFO *)mpidata)->info, &(nc->int_ncid));
+
+        /* Default to independent access, like netCDF-4/HDF5 files. */
+        if (res == NC_NOERR) {
+	    res = ncmpi_begin_indep_data(nc->int_ncid);
+	    nc5->pnetcdf_access_mode = NC_INDEPENDENT;
+        }
+        if(res != NC_NOERR && nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
+        return res;
+    }
+#endif
+    /* sequential program to open a file */
+    return nc5_open_file(path, cmode, basepe, chunksizehintp, use_parallel,
+		         mpidata, table, nc);
+}
+
+int
+NC5_redef(int ncid)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
-	  return status;
-	nc3 = NC3_DATA(nc);
+		return status;
+	nc5 = NC5_DATA(nc);
 
-	if(!NC_indef(nc3))
-		return(NC_ENOTINDEFINE);
+#ifdef USE_PARALLEL
+        if (nc5->use_parallel)
+            return ncmpi_redef(nc->int_ncid);
+#endif
+	if(NC_readonly(nc5))
+		return NC_EPERM;
 
-	return (NC_endef(nc3, h_minfree, v_align, v_minfree, r_align));
+	if(NC_indef(nc5))
+		return NC_EINDEFINE;
+
+
+	if(fIsSet(nc5->nciop->ioflags, NC_SHARE))
+	{
+		/* read in from disk */
+		status = read_NC(nc5);
+		if(status != NC_NOERR)
+			return status;
+	}
+
+	nc5->old = dup_NC5INFO(nc5);
+	if(nc5->old == NULL)
+		return NC_ENOMEM;
+
+	fSet(nc5->flags, NC_INDEF);
+
+	return NC_NOERR;
 }
 
+int
+NC5__enddef(int ncid,
+            size_t h_minfree, size_t v_align,
+            size_t v_minfree, size_t r_align)
+{
+    int status;
+    NC* nc;
+    NC5_INFO* nc5;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR)
+	return status;
+    nc5 = NC5_DATA(nc);
+
+    if(!NC_indef(nc5))
+        return(NC_ENOTINDEFINE);
+
+#ifdef USE_PARALLEL
+    if (nc5->use_parallel) {
+        status = ncmpi__enddef(nc->int_ncid, h_minfree, v_align, v_minfree, r_align);
+        if(status == NC_NOERR) {
+	    if (nc5->pnetcdf_access_mode == NC_INDEPENDENT)
+	        status = ncmpi_begin_indep_data(nc->int_ncid);
+        }
+        return status;
+    }
+#endif
+    return NC_endef(nc5, h_minfree, v_align, v_minfree, r_align);
+}
 
 int
-NC3_close(int ncid)
+NC5_sync(int ncid)
 {
-	int status = NC_NOERR;
+	int status;
 	NC *nc;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
-	    return status;
-	nc3 = NC3_DATA(nc);
-
-	if(NC_indef(nc3))
-	{
-		status = NC_endef(nc3, 0, 1, 0, 1); /* TODO: defaults */
-		if(status != NC_NOERR )
-		{
-			(void) NC3_abort(ncid);
-			return status;
-		}
-	}
-	else if(!NC_readonly(nc3))
-	{
-		status = NC_sync(nc3);
-		/* flush buffers before any filesize comparisons */
-		(void) ncio_sync(nc3->nciop);
-	}
-
-	/*
-	 * If file opened for writing and filesize is less than
-	 * what it should be (due to previous use of NOFILL mode),
-	 * pad it to correct size, as reported by NC_calcsize().
-	 */
-	if (status == ENOERR) {
-	    off_t filesize; 	/* current size of open file */
-	    off_t calcsize;	/* calculated file size, from header */
-	    status = ncio_filesize(nc3->nciop, &filesize);
-	    if(status != ENOERR)
 		return status;
-	    status = NC_calcsize(nc3, &calcsize);
-	    if(status != NC_NOERR)
-		return status;
-	    if(filesize < calcsize && !NC_readonly(nc3)) {
-		status = ncio_pad_length(nc3->nciop, calcsize);
-		if(status != ENOERR)
-		    return status;
-	    }
+	nc5 = NC5_DATA(nc);
+
+	if(NC_indef(nc5))
+		return NC_EINDEFINE;
+
+#ifdef USE_PARALLEL
+	if (nc5->use_parallel)
+		return ncmpi_sync(nc->int_ncid);
+#endif
+
+	if(NC_readonly(nc5))
+	{
+		return read_NC(nc5);
 	}
+	/* else, read/write */
 
-	(void) ncio_close(nc3->nciop, 0);
-	nc3->nciop = NULL;
+	status = nc5x_sync(nc5);
+	if(status != NC_NOERR)
+		return status;
 
-	free_NC3INFO(nc3);
-        NC3_DATA_SET(nc,NULL);
+	status = ncio_sync(nc5->nciop);
+	if(status != NC_NOERR)
+		return status;
+
+#ifdef USE_FSYNC
+	/* may improve concurrent access, but slows performance if
+	 * called frequently */
+#ifndef WIN32
+	status = fsync(nc5->nciop->fd);
+#else
+	status = _commit(nc5->nciop->fd);
+#endif	/* WIN32 */
+#endif	/* USE_FSYNC */
 
 	return status;
 }
@@ -1206,210 +1360,161 @@ NC3_close(int ncid)
  * In create, remove the file.
  */
 int
-NC3_abort(int ncid)
+NC5_abort(int ncid)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 	int doUnlink = 0;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 	    return status;
-	nc3 = NC3_DATA(nc);
+	nc5 = NC5_DATA(nc);
 
-	doUnlink = NC_IsNew(nc3);
+#ifdef USE_PARALLEL
+	if (nc5->use_parallel) {
+		status = ncmpi_abort(nc->int_ncid);
+		if(nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
+		return status;
+	}
+#endif
+	doUnlink = NC_IsNew(nc5);
 
-	if(nc3->old != NULL)
+	if(nc5->old != NULL)
 	{
 		/* a plain redef, not a create */
-		assert(!NC_IsNew(nc3));
-		assert(fIsSet(nc3->flags, NC_INDEF));
-		free_NC3INFO(nc3->old);
-		nc3->old = NULL;
-		fClr(nc3->flags, NC_INDEF);
+		assert(!NC_IsNew(nc5));
+		assert(fIsSet(nc5->flags, NC_INDEF));
+		free_NC5INFO(nc5->old);
+		nc5->old = NULL;
+		fClr(nc5->flags, NC_INDEF);
 	}
-	else if(!NC_readonly(nc3))
+	else if(!NC_readonly(nc5))
 	{
-		status = NC_sync(nc3);
+		status = nc5x_sync(nc5);
 		if(status != NC_NOERR)
 			return status;
 	}
 
 
-	(void) ncio_close(nc3->nciop, doUnlink);
-	nc3->nciop = NULL;
+	(void) ncio_close(nc5->nciop, doUnlink);
+	nc5->nciop = NULL;
 
-	free_NC3INFO(nc3);
+	free_NC5INFO(nc5);
 	if(nc)
-            NC3_DATA_SET(nc,NULL);
+            NC5_DATA_SET(nc,NULL);
 
 	return NC_NOERR;
 }
 
-
 int
-NC3_redef(int ncid)
+NC5_close(int ncid)
 {
-	int status;
+	int status = NC_NOERR;
 	NC *nc;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
+	    return status;
+	nc5 = NC5_DATA(nc);
+
+#ifdef USE_PARALLEL
+	if (nc5->use_parallel) {
+		status = ncmpi_close(nc->int_ncid);
+		if(nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
 		return status;
-	nc3 = NC3_DATA(nc);
-
-	if(NC_readonly(nc3))
-		return NC_EPERM;
-
-	if(NC_indef(nc3))
-		return NC_EINDEFINE;
-
-
-	if(fIsSet(nc3->nciop->ioflags, NC_SHARE))
+	}
+#endif
+	if(NC_indef(nc5))
 	{
-		/* read in from disk */
-		status = read_NC(nc3);
-		if(status != NC_NOERR)
+		status = NC_endef(nc5, 0, 1, 0, 1); /* TODO: defaults */
+		if(status != NC_NOERR )
+		{
+			(void) NC5_abort(ncid);
 			return status;
+		}
 	}
-
-	nc3->old = dup_NC3INFO(nc3);
-	if(nc3->old == NULL)
-		return NC_ENOMEM;
-
-	fSet(nc3->flags, NC_INDEF);
-
-	return NC_NOERR;
-}
-
-
-int
-NC3_inq(int ncid,
-	int *ndimsp,
-	int *nvarsp,
-	int *nattsp,
-	int *xtendimp)
-{
-	int status;
-	NC *nc;
-	NC3_INFO* nc3;
-
-	status = NC_check_id(ncid, &nc);
-	if(status != NC_NOERR)
-		return status;
-	nc3 = NC3_DATA(nc);
-
-	if(ndimsp != NULL)
-		*ndimsp = (int) nc3->dims.nelems;
-	if(nvarsp != NULL)
-		*nvarsp = (int) nc3->vars.nelems;
-	if(nattsp != NULL)
-		*nattsp = (int) nc3->attrs.nelems;
-	if(xtendimp != NULL)
-		*xtendimp = find_NC_Udim(&nc3->dims, NULL);
-
-	return NC_NOERR;
-}
-
-int
-NC3_inq_unlimdim(int ncid, int *xtendimp)
-{
-	int status;
-	NC *nc;
-	NC3_INFO* nc3;
-
-	status = NC_check_id(ncid, &nc);
-	if(status != NC_NOERR)
-		return status;
-	nc3 = NC3_DATA(nc);
-
-	if(xtendimp != NULL)
-		*xtendimp = find_NC_Udim(&nc3->dims, NULL);
-
-	return NC_NOERR;
-}
-
-int
-NC3_sync(int ncid)
-{
-	int status;
-	NC *nc;
-	NC3_INFO* nc3;
-
-	status = NC_check_id(ncid, &nc);
-	if(status != NC_NOERR)
-		return status;
-	nc3 = NC3_DATA(nc);
-
-	if(NC_indef(nc3))
-		return NC_EINDEFINE;
-
-	if(NC_readonly(nc3))
+	else if(!NC_readonly(nc5))
 	{
-		return read_NC(nc3);
+		status = nc5x_sync(nc5);
+		/* flush buffers before any filesize comparisons */
+		(void) ncio_sync(nc5->nciop);
 	}
-	/* else, read/write */
 
-	status = NC_sync(nc3);
-	if(status != NC_NOERR)
+	/*
+	 * If file opened for writing and filesize is less than
+	 * what it should be (due to previous use of NOFILL mode),
+	 * pad it to correct size, as reported by NC_calcsize().
+	 */
+	if (status == ENOERR) {
+	    off_t filesize; 	/* current size of open file */
+	    off_t calcsize;	/* calculated file size, from header */
+	    status = ncio_filesize(nc5->nciop, &filesize);
+	    if(status != ENOERR)
 		return status;
-
-	status = ncio_sync(nc3->nciop);
-	if(status != NC_NOERR)
+	    status = NC_calcsize(nc5, &calcsize);
+	    if(status != NC_NOERR)
 		return status;
+	    if(filesize < calcsize && !NC_readonly(nc5)) {
+		status = ncio_pad_length(nc5->nciop, calcsize);
+		if(status != ENOERR)
+		    return status;
+	    }
+	}
 
-#ifdef USE_FSYNC
-	/* may improve concurrent access, but slows performance if
-	 * called frequently */
-#ifndef WIN32
-	status = fsync(nc3->nciop->fd);
-#else
-	status = _commit(nc3->nciop->fd);
-#endif	/* WIN32 */
-#endif	/* USE_FSYNC */
+	(void) ncio_close(nc5->nciop, 0);
+	nc5->nciop = NULL;
+
+	free_NC5INFO(nc5);
+        NC5_DATA_SET(nc,NULL);
 
 	return status;
 }
 
 
 int
-NC3_set_fill(int ncid,
+NC5_set_fill(int ncid,
 	int fillmode, int *old_mode_ptr)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 	int oldmode;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	nc3 = NC3_DATA(nc);
+	nc5 = NC5_DATA(nc);
 
-	if(NC_readonly(nc3))
+#ifdef USE_PARALLEL
+	if (nc5->use_parallel)
+		return ncmpi_set_fill(nc->int_ncid,fillmode,old_mode_ptr);
+#endif
+
+	if(NC_readonly(nc5))
 		return NC_EPERM;
 
-	oldmode = fIsSet(nc3->flags, NC_NOFILL) ? NC_NOFILL : NC_FILL;
+	oldmode = fIsSet(nc5->flags, NC_NOFILL) ? NC_NOFILL : NC_FILL;
 
 	if(fillmode == NC_NOFILL)
 	{
-		fSet(nc3->flags, NC_NOFILL);
+		fSet(nc5->flags, NC_NOFILL);
 	}
 	else if(fillmode == NC_FILL)
 	{
-		if(fIsSet(nc3->flags, NC_NOFILL))
+		if(fIsSet(nc5->flags, NC_NOFILL))
 		{
 			/*
 			 * We are changing back to fill mode
 			 * so do a sync
 			 */
-			status = NC_sync(nc3);
+			status = nc5x_sync(nc5);
 			if(status != NC_NOERR)
 				return status;
 		}
-		fClr(nc3->flags, NC_NOFILL);
+		fClr(nc5->flags, NC_NOFILL);
 	}
 	else
 	{
@@ -1426,29 +1531,29 @@ NC3_set_fill(int ncid,
 
 /* create function versions of the NC_*_numrecs macros */
 size_t
-NC_get_numrecs(const NC *nc3) {
+NC5_get_numrecs(const NC *nc5) {
 	shmem_t numrec;
-	shmem_short_get(&numrec, (shmem_t *) nc3->lock + LOCKNUMREC_VALUE, 1,
-		nc3->lock[LOCKNUMREC_BASEPE]);
+	shmem_short_get(&numrec, (shmem_t *) nc5->lock + LOCKNUMREC_VALUE, 1,
+		nc5->lock[LOCKNUMREC_BASEPE]);
 	return (size_t) numrec;
 }
 
 void
-NC_set_numrecs(NC *nc3, size_t nrecs)
+NC5_set_numrecs(NC *nc5, size_t nrecs)
 {
     shmem_t numrec = (shmem_t) nrecs;
     /* update local value too */
-    nc3->lock[LOCKNUMREC_VALUE] = (ushmem_t) numrec;
-    shmem_short_put((shmem_t *) nc3->lock + LOCKNUMREC_VALUE, &numrec, 1,
-    nc3->lock[LOCKNUMREC_BASEPE]);
+    nc5->lock[LOCKNUMREC_VALUE] = (ushmem_t) numrec;
+    shmem_short_put((shmem_t *) nc5->lock + LOCKNUMREC_VALUE, &numrec, 1,
+    nc5->lock[LOCKNUMREC_BASEPE]);
 }
 
-void NC_increase_numrecs(NC *nc3, size_t nrecs)
+void NC5_increase_numrecs(NC *nc5, size_t nrecs)
 {
     /* this is only called in one place that's already protected
      * by a lock ... so don't worry about it */
-    if (nrecs > NC_get_numrecs(nc3))
-	NC_set_numrecs(nc3, nrecs);
+    if (nrecs > NC5_get_numrecs(nc5))
+	NC5_set_numrecs(nc5, nrecs);
 }
 
 #endif /* LOCKNUMREC */
@@ -1456,12 +1561,21 @@ void NC_increase_numrecs(NC *nc3, size_t nrecs)
 /* everyone in communicator group will be executing this */
 /*ARGSUSED*/
 int
-NC3_set_base_pe(int ncid, int pe)
+NC5_set_base_pe(int ncid, int pe)
 {
+#ifdef USE_PARALLEL
+    NC* nc;
+    int status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    if (((NC5_INFO*)nc->dispatchdata)->use_parallel)
+        return NC_NOERR;
+#endif
+
 #if _CRAYMPP && defined(LOCKNUMREC)
 	int status;
 	NC *nc;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 	shmem_t numrecs;
 
 	if ((status = NC_check_id(ncid, &nc) != NC_NOERR) {
@@ -1470,28 +1584,28 @@ NC3_set_base_pe(int ncid, int pe)
 	if (pe < 0 || pe >= _num_pes()) {
 		return NC_EINVAL; /* invalid base pe */
 	}
-	nc3 = NC3_DATA(nc);
+	nc5 = NC5_DATA(nc);
 
-	numrecs = (shmem_t) NC_get_numrecs(nc3);
+	numrecs = (shmem_t) NC5_get_numrecs(nc5);
 
-	nc3->lock[LOCKNUMREC_VALUE] = (ushmem_t) numrecs;
+	nc5->lock[LOCKNUMREC_VALUE] = (ushmem_t) numrecs;
 
 	/* update serving & lock values for a "smooth" transition */
 	/* note that the "real" server will being doing this as well */
 	/* as all the rest in the group */
 	/* must have syncronization before & after this step */
 	shmem_short_get(
-		(shmem_t *) nc3->lock + LOCKNUMREC_SERVING,
-		(shmem_t *) nc3->lock + LOCKNUMREC_SERVING,
-		1, nc3->lock[LOCKNUMREC_BASEPE]);
+		(shmem_t *) nc5->lock + LOCKNUMREC_SERVING,
+		(shmem_t *) nc5->lock + LOCKNUMREC_SERVING,
+		1, nc5->lock[LOCKNUMREC_BASEPE]);
 
 	shmem_short_get(
-		(shmem_t *) nc3->lock + LOCKNUMREC_LOCK,
-		(shmem_t *) nc3->lock + LOCKNUMREC_LOCK,
-		1, nc3->lock[LOCKNUMREC_BASEPE]);
+		(shmem_t *) nc5->lock + LOCKNUMREC_LOCK,
+		(shmem_t *) nc5->lock + LOCKNUMREC_LOCK,
+		1, nc5->lock[LOCKNUMREC_BASEPE]);
 
 	/* complete transition */
-	nc3->lock[LOCKNUMREC_BASEPE] = (ushmem_t) pe;
+	nc5->lock[LOCKNUMREC_BASEPE] = (ushmem_t) pe;
 
 #endif /* _CRAYMPP && LOCKNUMREC */
 	return NC_NOERR;
@@ -1499,19 +1613,30 @@ NC3_set_base_pe(int ncid, int pe)
 
 /*ARGSUSED*/
 int
-NC3_inq_base_pe(int ncid, int *pe)
+NC5_inq_base_pe(int ncid, int *pe)
 {
+#ifdef USE_PARALLEL
+    NC* nc;
+    int status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    if (((NC5_INFO*)nc->dispatchdata)->use_parallel) {
+        if(pe) *pe = 0;
+        return NC_NOERR;
+    }
+#endif
+
 #if _CRAYMPP && defined(LOCKNUMREC)
 	int status;
 	NC *nc;
-	NC3_INFO* nc3;
+	NC5_INFO* nc5;
 
 	if ((status = NC_check_id(ncid, &nc)) != NC_NOERR) {
 		return status;
 	}
 
-	*pe = (int) nc3->lock[LOCKNUMREC_BASEPE];
-	nc3 = NC3_DATA(nc);
+	*pe = (int) nc5->lock[LOCKNUMREC_BASEPE];
+	nc5 = NC5_DATA(nc);
 #else
 	/*
 	 * !_CRAYMPP, only pe 0 is valid
@@ -1522,111 +1647,196 @@ NC3_inq_base_pe(int ncid, int *pe)
 }
 
 int
-NC3_inq_format(int ncid, int *formatp)
+NC5_inq_format(int ncid, int* formatp)
 {
-	int status;
-	NC *nc;
-	NC3_INFO* nc3;
+        int status;
+        NC *nc;
+        NC5_INFO* nc5;
 
-	status = NC_check_id(ncid, &nc);
-	if(status != NC_NOERR)
-		return status;
-	nc3 = NC3_DATA(nc);
+        status = NC_check_id(ncid, &nc);
+        if(status != NC_NOERR)
+                return status;
 
-	/* only need to check for netCDF-3 variants, since this is never called for netCDF-4
-	   files */
-	*formatp = fIsSet(nc3->flags, NC_64BIT_OFFSET) ? NC_FORMAT_64BIT
-	    : NC_FORMAT_CLASSIC;
-	return NC_NOERR;
+        nc5 = NC5_DATA(nc);
+
+        /* only need to check for netCDF-3 variants, since this is never
+           called for netCDF-4 files */
+        if (fIsSet(nc5->flags, NC_64BIT_DATA))
+                *formatp = NC_FORMAT_CDF5;
+        else if (fIsSet(nc5->flags, NC_64BIT_OFFSET))
+                *formatp = NC_FORMAT_CDF2;
+        else
+                *formatp = NC_FORMAT_CLASSIC;
+
+        return NC_NOERR;
 }
 
 int
-NC3_inq_format_extended(int ncid, int *formatp, int *modep)
+NC5_inq_format_extended(int ncid, int* formatp, int *modep)
+{
+    NC* nc;
+    int status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    if(modep) *modep = nc->mode;
+
+#ifdef USE_PARALLEL
+    if (((NC5_INFO*)nc->dispatchdata)->use_parallel) {
+        if(formatp) *formatp = NC_FORMAT_PNETCDF;
+    }
+    else
+#endif
+    {
+/* TODO: create a new flag to tell CDF-5 from NC_FORMAT_PNETCDF */
+        if(formatp) *formatp = NC_FORMAT_PNETCDF; // NC_FORMAT_NC5;
+    }
+    return NC_NOERR;
+}
+
+int
+NC5_inq(int ncid,
+	int *ndimsp,
+	int *nvarsp,
+	int *nattsp,
+	int *xtendimp)
 {
 	int status;
 	NC *nc;
+	NC5_INFO* nc5;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-        if(formatp) *formatp = NC_FORMAT_NC3;
-	if(modep) *modep = nc->mode;
+	nc5 = NC5_DATA(nc);
+
+#ifdef USE_PARALLEL
+	if (nc5->use_parallel)
+		return ncmpi_inq(nc->int_ncid,ndimsp,nvarsp,nattsp,xtendimp);
+#endif
+	if(ndimsp != NULL)
+		*ndimsp = (int) nc5->dims.nelems;
+	if(nvarsp != NULL)
+		*nvarsp = (int) nc5->vars.nelems;
+	if(nattsp != NULL)
+		*nattsp = (int) nc5->attrs.nelems;
+	if(xtendimp != NULL)
+		*xtendimp = nc5x_find_NC_Udim(&nc5->dims, NULL);
+
 	return NC_NOERR;
 }
 
 /* The sizes of types may vary from platform to platform, but within
  * netCDF files, type sizes are fixed. */
+#define NC_CHAR_LEN sizeof(char)
+#define NC_STRING_LEN sizeof(char *)
 #define NC_BYTE_LEN 1
-#define NC_CHAR_LEN 1
 #define NC_SHORT_LEN 2
 #define NC_INT_LEN 4
 #define NC_FLOAT_LEN 4
 #define NC_DOUBLE_LEN 8
-#define NUM_ATOMIC_TYPES 6
+#define NC_INT64_LEN 8
 
-/* This netCDF-4 function proved so popular that a netCDF-classic
- * version is provided. You're welcome. */
-int
-NC3_inq_type(int ncid, nc_type typeid, char *name, size_t *size)
-{
-   int atomic_size[NUM_ATOMIC_TYPES] = {NC_BYTE_LEN, NC_CHAR_LEN, NC_SHORT_LEN,
-					NC_INT_LEN, NC_FLOAT_LEN, NC_DOUBLE_LEN};
-   char atomic_name[NUM_ATOMIC_TYPES][NC_MAX_NAME + 1] = {"byte", "char", "short",
-							  "int", "float", "double"};
+static int atomic_size[12] = {NC_BYTE_LEN,  NC_CHAR_LEN,  NC_SHORT_LEN,
+                              NC_INT_LEN,   NC_FLOAT_LEN, NC_DOUBLE_LEN,
+                              NC_BYTE_LEN,  NC_SHORT_LEN, NC_INT_LEN,
+                              NC_INT64_LEN, NC_INT64_LEN, NC_STRING_LEN};
 
-   /* Only netCDF classic model needs to be handled. */
-   if (typeid < NC_BYTE || typeid > NC_DOUBLE)
-      return NC_EBADTYPE;
-
-   /* Give the user the values they want. Subtract one because types
-    * are numbered starting at 1, not 0. */
-   if (name)
-      strcpy(name, atomic_name[typeid - 1]);
-   if (size)
-      *size = atomic_size[typeid - 1];
-
-   return NC_NOERR;
-}
+static char
+atomic_name[12][NC_MAX_NAME + 1] = {"byte", "char", "short",
+                                    "int", "float", "double",
+                                    "ubyte", "ushort","uint",
+                                    "int64", "uint64", "string"};
 
 int
-nc_delete_mp(const char * path, int basepe)
+NC5_inq_type(int ncid, nc_type typeid, char* name, size_t* size)
 {
-	NC *nc;
-	NC3_INFO* nc3;
-	int status;
-	int ncid;
-	size_t chunk = 512;
+    NC* nc;
+    int format, status;
 
-	status = nc_open(path,NC_NOWRITE,&ncid);
-        if(status) return status;
+    status = NC_check_id(ncid, &nc);
+    if (status != NC_NOERR) return status;
 
-	status = NC_check_id(ncid,&nc);
-        if(status) return status;
-	nc3 = NC3_DATA(nc);
-
-	nc3->chunk = chunk;
-
-#if defined(LOCKNUMREC) /* && _CRAYMPP */
-	if (status = NC_init_pe(nc3, basepe)) {
-		return status;
-	}
-#else
-	/*
-	 * !_CRAYMPP, only pe 0 is valid
-	 */
-	if(basepe != 0)
-		return NC_EINVAL;
+#ifdef USE_PARALLEL
+    if (((NC5_INFO*)nc->dispatchdata)->use_parallel)
+        status = ncmpi_inq_format(nc->int_ncid, &format);
+    else
 #endif
+        status = NC5_inq_format(ncid, &format);
 
-	(void) nc_close(ncid);
-	if(unlink(path) == -1) {
-	    return NC_EIO;	/* No more specific error code is appropriate */
-	}
-	return NC_NOERR;
+    if (status != NC_NOERR) return status;
+
+    if (format == NC_FORMAT_CDF5) {
+        if (typeid < NC_BYTE || typeid >= NC_STRING)
+           return NC_EBADTYPE;
+    }
+    else { /* CDF-1 and CDF-2 */
+        if (typeid < NC_BYTE || typeid > NC_DOUBLE)
+           return NC_EBADTYPE;
+    }
+
+    /* Give the user the values they want. Subtract one because types
+     * are numbered starting at 1, not 0. */
+    if (name)
+        strcpy(name, atomic_name[typeid - 1]);
+    if (size)
+        *size = atomic_size[typeid - 1];
+
+    return NC_NOERR;
 }
 
 int
-nc_delete(const char * path)
+NC5_inq_var_all(int ncid, int varid, char *name, nc_type *xtypep,
+               int *ndimsp, int *dimidsp, int *nattsp,
+               int *shufflep, int *deflatep, int *deflate_levelp,
+               int *fletcher32p, int *contiguousp, size_t *chunksizesp,
+               int *no_fill, void *fill_valuep, int *endiannessp,
+	       int *options_maskp, int *pixels_per_blockp)
 {
-        return nc_delete_mp(path, 0);
+    int status;
+
+#ifdef USE_PARALLEL
+    NC* nc;
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+
+    if (((NC5_INFO*)nc->dispatchdata)->use_parallel)
+        status = ncmpi_inq_var(nc->int_ncid, varid, name, xtypep, ndimsp, dimidsp, nattsp);
+    else
+#endif
+        status = NC5_inq_var(ncid, varid, name, xtypep, ndimsp, dimidsp, nattsp);
+
+    if(status != NC_NOERR) return status;
+    if(shufflep) *shufflep = 0;
+    if(deflatep) *deflatep = 0;
+    if(fletcher32p) *fletcher32p = 0;
+    if(contiguousp) *contiguousp = NC_CONTIGUOUS;
+    if(no_fill) *no_fill = 1;
+    if(endiannessp) return NC_ENOTNC4;
+    if(options_maskp) return NC_ENOTNC4;
+    return NC_NOERR;
 }
+
+int
+NC5_var_par_access(int ncid, int varid, int par_access)
+{
+    NC *nc;
+    int status;
+
+    status = NC_check_id(ncid, &nc);
+    if(status != NC_NOERR) return status;
+#ifdef USE_PARALLEL
+    if (par_access != NC_INDEPENDENT && par_access != NC_COLLECTIVE)
+	return NC_EINVAL;
+
+    if(par_access == ((NC5_INFO*)nc->dispatchdata)->pnetcdf_access_mode)
+	return NC_NOERR;
+    ((NC5_INFO*)nc->dispatchdata)->pnetcdf_access_mode = par_access;
+
+    if (par_access == NC_INDEPENDENT)
+	status = ncmpi_begin_indep_data(nc->int_ncid);
+    else
+	status = ncmpi_end_indep_data(nc->int_ncid);
+#endif
+    return status;
+}
+

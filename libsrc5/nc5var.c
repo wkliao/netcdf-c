@@ -2,17 +2,22 @@
  *	Copyright 1996, University Corporation for Atmospheric Research
  *      See netcdf/COPYRIGHT file for copying and redistribution conditions.
  */
-/* $Id: var.c,v 1.144 2010/05/30 00:50:35 russ Exp $ */
+/* $Id$ */
 
 #include "config.h"
-#include "nc3internal.h"
+#include "nc5internal.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
-#include "ncx.h"
+#include "nc5ncx.h"
 #include "rnd.h"
 #include "utf8proc.h"
+
+#ifdef USE_PARALLEL
+/* Must follow netcdf.h */
+#include <pnetcdf.h>
+#endif
 
 #ifndef OFF_T_MAX
 #define OFF_T_MAX (~ (off_t) 0 - (~ (off_t) 0 << (CHAR_BIT * sizeof (off_t) - 1)))
@@ -23,11 +28,11 @@
  * Formerly NC_free_var(var)
  */
 void
-free_NC_var(NC_var *varp)
+nc5x_free_NC_var(NC_var *varp)
 {
 	if(varp == NULL)
 		return;
-	free_NC_attrarrayV(&varp->attrs);
+	nc5x_free_NC_attrarrayV(&varp->attrs);
 	free_NC_string(varp->name);
 #ifndef MALLOCHACK
 	if(varp->dimids != NULL) free(varp->dimids);
@@ -43,7 +48,7 @@ free_NC_var(NC_var *varp)
  * and ncx_get_NC_var()
  */
 NC_var *
-new_x_NC_var(
+nc5x_new_x_NC_var(
 	NC_string *strp,
 	size_t ndims)
 {
@@ -118,7 +123,7 @@ new_NC_var(const char *uname, nc_type type,
 	if(strp == NULL)
 	  return NULL;
 
-	varp = new_x_NC_var(strp, ndims);
+	varp = nc5x_new_x_NC_var(strp, ndims);
 	if(varp == NULL )
 	{
 		free_NC_string(strp);
@@ -146,9 +151,9 @@ dup_NC_var(const NC_var *rvarp)
 		return NULL;
 
 
-	if(dup_NC_attrarrayV(&varp->attrs, &rvarp->attrs) != NC_NOERR)
+	if(nc5x_dup_NC_attrarrayV(&varp->attrs, &rvarp->attrs) != NC_NOERR)
 	{
-		free_NC_var(varp);
+		nc5x_free_NC_var(varp);
 		return NULL;
 	}
 
@@ -171,7 +176,7 @@ dup_NC_var(const NC_var *rvarp)
  * Free the stuff "in" (referred to by) an NC_vararray.
  * Leaves the array itself allocated.
  */
-void
+static void
 free_NC_vararrayV0(NC_vararray *ncap)
 {
 	assert(ncap != NULL);
@@ -186,7 +191,7 @@ free_NC_vararrayV0(NC_vararray *ncap)
 		NC_var *const *const end = &vpp[ncap->nelems];
 		for( /*NADA*/; vpp < end; vpp++)
 		{
-			free_NC_var(*vpp);
+			nc5x_free_NC_var(*vpp);
 			*vpp = NULL;
 		}
 	}
@@ -200,7 +205,7 @@ free_NC_vararrayV0(NC_vararray *ncap)
 NC_free_array()
  */
 void
-free_NC_vararrayV(NC_vararray *ncap)
+nc5x_free_NC_vararrayV(NC_vararray *ncap)
 {
 	assert(ncap != NULL);
 
@@ -218,7 +223,7 @@ free_NC_vararrayV(NC_vararray *ncap)
 
 
 int
-dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref)
+nc5x_dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref)
 {
 	int status = NC_NOERR;
 
@@ -253,7 +258,7 @@ dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref)
 
 	if(status != NC_NOERR)
 	{
-		free_NC_vararrayV(ncap);
+		nc5x_free_NC_vararrayV(ncap);
 		return status;
 	}
 
@@ -327,7 +332,7 @@ elem_NC_vararray(const NC_vararray *ncap, size_t elem)
  * Formerly (sort of)
 NC_hvarid
  */
-int
+static int
 NC_findvar(const NC_vararray *ncap, const char *uname, NC_var **varpp)
 {
 	NC_var **loc;
@@ -371,12 +376,13 @@ NC_findvar(const NC_vararray *ncap, const char *uname, NC_var **varpp)
 NC_xtypelen
  * See also ncx_len()
  */
-size_t
+static size_t
 ncx_szof(nc_type type)
 {
 	switch(type){
 	case NC_BYTE:
 	case NC_CHAR:
+	case NC_UBYTE:
 		return(1);
 	case NC_SHORT :
 		return(2);
@@ -386,6 +392,14 @@ ncx_szof(nc_type type)
 		return X_SIZEOF_FLOAT;
 	case NC_DOUBLE :
 		return X_SIZEOF_DOUBLE;
+	case NC_USHORT : 
+		return X_SIZEOF_USHORT;
+	case NC_UINT : 
+		return X_SIZEOF_UINT;
+	case NC_INT64 : 
+		return X_SIZEOF_INT64;
+	case NC_UINT64 : 
+		return X_SIZEOF_UINT64;
 	default:
 	        assert("ncx_szof invalid type" == 0);
 	        return 0;
@@ -399,7 +413,7 @@ ncx_szof(nc_type type)
 NC_var_shape(var, dims)
  */
 int
-NC_var_shape(NC_var *varp, const NC_dimarray *dims)
+NC5_var_shape(NC_var *varp, const NC_dimarray *dims)
 {
 	size_t *shp, *op;
 	off_t *dsp;
@@ -424,7 +438,7 @@ NC_var_shape(NC_var *varp, const NC_dimarray *dims)
 		if(*ip < 0 || (size_t) (*ip) >= ((dims != NULL) ? dims->nelems : 1) )
 			return NC_EBADDIM;
 
-		dimp = elem_NC_dimarray(dims, (size_t)*ip);
+		dimp = nc5x_elem_NC_dimarray(dims, (size_t)*ip);
 		*op = dimp->size;
 		if(*op == NC_UNLIMITED && ip != varp->dimids)
 			return NC_EUNLIMPOS;
@@ -462,6 +476,8 @@ out :
 		case NC_BYTE :
 		case NC_CHAR :
 		case NC_SHORT :
+		case NC_UBYTE :
+		case NC_USHORT :
 		        if( varp->len%4 != 0 )
 			{
 			        varp->len += 4 - varp->len%4; /* round up */
@@ -476,10 +492,6 @@ out :
 	{	/* OK for last var to be "too big", indicated by this special len */
 	        varp->len = X_UINT_MAX;
         }
-#if 0
-	arrayp("\tshape", varp->ndims, varp->shape);
-	arrayp("\tdsizes", varp->ndims, varp->dsizes);
-#endif
 	return NC_NOERR;
 }
 
@@ -491,7 +503,7 @@ out :
  * systems with LFS it should be 2^32 - 4.
  */
 int
-NC_check_vlen(NC_var *varp, size_t vlen_max) {
+NC5_check_vlen(NC_var *varp, size_t vlen_max) {
     size_t prod=varp->xsz;	/* product of xsz and dimensions so far */
 
     int ii;
@@ -516,7 +528,7 @@ NC_check_vlen(NC_var *varp, size_t vlen_max) {
 NC_hlookupvar()
  */
 NC_var *
-NC_lookupvar(NC3_INFO* ncp, int varid)
+NC5_lookupvar(NC5_INFO* ncp, int varid)
 {
 	NC_var *varp;
 
@@ -541,20 +553,24 @@ NC_lookupvar(NC3_INFO* ncp, int varid)
 /* Public */
 
 int
-NC3_def_var( int ncid, const char *name, nc_type type,
+NC5_def_var( int ncid, const char *name, nc_type type,
 	 int ndims, const int *dimids, int *varidp)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* ncp;
+	NC5_INFO* ncp;
 	int varid;
 	NC_var *varp = NULL;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
+#ifdef USE_PARALLEL
+	if (ncp->use_parallel)
+		return ncmpi_def_var(nc->int_ncid,name,type,ndims,dimids,varidp);
+#endif
 	if(!NC_indef(ncp))
 	{
 		return NC_ENOTINDEFINE;
@@ -564,7 +580,7 @@ NC3_def_var( int ncid, const char *name, nc_type type,
 	if(status != NC_NOERR)
 		return status;
 
-	status = nc_cktype(type);
+	status = nc5_cktype(nc->mode, type);
 	if(status != NC_NOERR)
 		return status;
 
@@ -589,17 +605,17 @@ NC3_def_var( int ncid, const char *name, nc_type type,
 	if(varp == NULL)
 		return NC_ENOMEM;
 
-	status = NC_var_shape(varp, &ncp->dims);
+	status = NC5_var_shape(varp, &ncp->dims);
 	if(status != NC_NOERR)
 	{
-		free_NC_var(varp);
+		nc5x_free_NC_var(varp);
 		return status;
 	}
 
 	status = incr_NC_vararray(&ncp->vars, varp);
 	if(status != NC_NOERR)
 	{
-		free_NC_var(varp);
+		nc5x_free_NC_var(varp);
 		return status;
 	}
 
@@ -610,19 +626,23 @@ NC3_def_var( int ncid, const char *name, nc_type type,
 
 
 int
-NC3_inq_varid(int ncid, const char *name, int *varid_ptr)
+NC5_inq_varid(int ncid, const char *name, int *varid_ptr)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* ncp;
+	NC5_INFO* ncp;
 	NC_var *varp;
 	int varid;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
+#ifdef USE_PARALLEL
+	if (ncp->use_parallel)
+		return ncmpi_inq_varid(nc->int_ncid,name,varid_ptr);
+#endif
 	varid = NC_findvar(&ncp->vars, name, &varp);
 	if(varid == -1)
 	{
@@ -635,7 +655,7 @@ NC3_inq_varid(int ncid, const char *name, int *varid_ptr)
 
 
 int
-NC3_inq_var(int ncid,
+NC5_inq_var(int ncid,
 	int varid,
 	char *name,
 	nc_type *typep,
@@ -645,14 +665,14 @@ NC3_inq_var(int ncid,
 {
 	int status;
 	NC *nc;
-	NC3_INFO* ncp;
+	NC5_INFO* ncp;
 	NC_var *varp;
 	size_t ii;
 
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
 
 	varp = elem_NC_vararray(&ncp->vars, (size_t)varid);
 	if(varp == NULL)
@@ -686,11 +706,11 @@ NC3_inq_var(int ncid,
 }
 
 int
-NC3_rename_var(int ncid, int varid, const char *unewname)
+NC5_rename_var(int ncid, int varid, const char *unewname)
 {
 	int status;
 	NC *nc;
-	NC3_INFO* ncp;
+	NC5_INFO* ncp;
 	NC_var *varp;
 	NC_string *old, *newStr;
 	int other;
@@ -699,7 +719,12 @@ NC3_rename_var(int ncid, int varid, const char *unewname)
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR)
 		return status;
-	ncp = NC3_DATA(nc);
+	ncp = NC5_DATA(nc);
+
+#ifdef USE_PARALLEL
+	if (ncp->use_parallel)
+		return ncmpi_rename_var(nc->int_ncid,varid,unewname);
+#endif
 
 	if(NC_readonly(ncp))
 	{
@@ -717,7 +742,7 @@ NC3_rename_var(int ncid, int varid, const char *unewname)
 		return NC_ENAMEINUSE;
 	}
 
-	varp = NC_lookupvar(ncp, varid);
+	varp = NC5_lookupvar(ncp, varid);
 	if(varp == NULL)
 	{
 		/* invalid varid */
@@ -751,7 +776,7 @@ NC3_rename_var(int ncid, int varid, const char *unewname)
 
 	if(NC_doHsync(ncp))
 	{
-		status = NC_sync(ncp);
+		status = nc5x_sync(ncp);
 		if(status != NC_NOERR)
 			return status;
 	}

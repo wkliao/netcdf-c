@@ -61,10 +61,8 @@ NCDAPTESTDIR = ncdap_test
 #endif # BUILD_UTILITIES
 endif
 
-# Build pnetcdf
-if USE_PNETCDF
+# Support CDF-5
 LIBSRC5 = libsrc5
-endif
 
 # Build UDUNITS?
 #if BUILD_UDUNITS
@@ -121,6 +119,33 @@ endif # BUILD_DLL
 settingsdir=$(libdir)
 settings_DATA=libnetcdf.settings
 
+#####
+# If ENABLE_FORTRAN was turned on,
+# we have new make targets, build-netcdf-fortran and
+# install-netcdf-fortran.
+#####
+
+
+###
+# build-netcdf-fortran
+###
+if BUILD_FORTRAN
+
+build-netcdf-fortran:
+	echo "Downloading and Building NetCDF-Fortran"
+	chmod u+x $(abs_top_builddir)/postinstall.sh
+	sh -c "$(abs_top_builddir)/postinstall.sh -t autotools -a build"
+
+###
+# install-netcdf-fortran
+###
+install-netcdf-fortran:
+	echo "Installing NetCDF-Fortran"
+	chmod u+x $(abs_top_builddir)/postinstall.sh
+	sh -c "$(abs_top_builddir)/postinstall.sh -t autotools -a install"
+
+endif
+
 # At Unidata, package up binaries.
 ftpbin: install
 	echo "Getting binaries from ${prefix}"
@@ -139,7 +164,14 @@ check_nc_config:
 	$(CC) `./nc-config --cflags` test_prog.c -o test_prog `./nc-config --libs`
 	./test_prog
 
+
 install-data-hook:
+
+# if BUILD_FORTRAN
+#	chmod u+x $(abs_top_builddir)/postinstall.sh
+#	sh -c "$(abs_top_builddir)/postinstall.sh -t autotools"
+#endif
+
 if BUILD_DLL
 	cp liblib/netcdfdll.def $(DESTDIR)${prefix}/lib
 endif # BUILD_DLL
