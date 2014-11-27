@@ -615,7 +615,7 @@ NCvnrecs(NC5_INFO* ncp, size_t numrecs)
 	/* now our turn to check & update value */
 #endif
 
-	if(numrecs > NC_get_numrecs(ncp))
+	if(numrecs > NC5_get_numrecs(ncp))
 	{
 
 
@@ -632,7 +632,7 @@ NCvnrecs(NC5_INFO* ncp, size_t numrecs)
 		if(!NC_dofill(ncp))
 		{
 			/* Simply set the new numrecs value */
-			NC_set_numrecs(ncp, numrecs);
+			NC5_set_numrecs(ncp, numrecs);
 		}
 		else
 		{
@@ -657,7 +657,7 @@ NCvnrecs(NC5_INFO* ncp, size_t numrecs)
 		    
 		    if (numrecvars != 1) { /* usual case */
 			/* Fill each record out to numrecs */
-			while((cur_nrecs = NC_get_numrecs(ncp)) < numrecs)
+			while((cur_nrecs = NC5_get_numrecs(ncp)) < numrecs)
 			    {
 				status = NCfillrecord(ncp,
 					(const NC_var *const*)ncp->vars.value,
@@ -666,13 +666,13 @@ NCvnrecs(NC5_INFO* ncp, size_t numrecs)
 				{
 					break;
 				}
-				NC_increase_numrecs(ncp, cur_nrecs +1);
+				NC5_increase_numrecs(ncp, cur_nrecs +1);
 			}
 			if(status != NC_NOERR)
 				goto common_return;
 		    } else {	/* special case */
 			/* Fill each record out to numrecs */
-			while((cur_nrecs = NC_get_numrecs(ncp)) < numrecs)
+			while((cur_nrecs = NC5_get_numrecs(ncp)) < numrecs)
 			    {
 				status = NCfillspecialrecord(ncp,
 					recvarp,
@@ -681,7 +681,7 @@ NCvnrecs(NC5_INFO* ncp, size_t numrecs)
 				{
 					break;
 				}
-				NC_increase_numrecs(ncp, cur_nrecs +1);
+				NC5_increase_numrecs(ncp, cur_nrecs +1);
 			}
 			if(status != NC_NOERR)
 				goto common_return;
@@ -721,7 +721,7 @@ NCcoordck(NC5_INFO* ncp, const NC_var *varp, const size_t *coord)
 	{
 		if(*coord > X_UINT_MAX) /* rkr: bug fix from previous X_INT_MAX */
 			return NC_EINVALCOORDS; /* sanity check */
-		if(NC_readonly(ncp) && *coord >= NC_get_numrecs(ncp))
+		if(NC_readonly(ncp) && *coord >= NC5_get_numrecs(ncp))
 		{
 			if(!NC_doNsync(ncp))
 				return NC_EINVALCOORDS;
@@ -731,7 +731,7 @@ NCcoordck(NC5_INFO* ncp, const NC_var *varp, const size_t *coord)
 				const int status = nc5x_read_numrecs(ncp);
 				if(status != NC_NOERR)
 					return status;
-				if(*coord >= NC_get_numrecs(ncp))
+				if(*coord >= NC5_get_numrecs(ncp))
 					return NC_EINVALCOORDS;
 			}
 		}
@@ -10220,7 +10220,7 @@ NC5_get_vara(int ncid, int varid,
 	if(varp->shape[0] == 0) {
 	    (void*)memcpy((void*)modedges,(void*)varp->shape,
                           sizeof(size_t)*varp->ndims);
-	    modedges[0] = NC_get_numrecs(nc5);
+	    modedges[0] = NC5_get_numrecs(nc5);
 	    edges = modedges;
 	} else
 	    edges = varp->shape;
@@ -10244,7 +10244,7 @@ NC5_get_vara(int ncid, int varid,
 
     if(IS_RECVAR(varp))
     {
-        if(*start + *edges > NC_get_numrecs(nc5))
+        if(*start + *edges > NC5_get_numrecs(nc5))
             return NC_EEDGE;
         if(varp->ndims == 1 && nc5->recsize <= varp->len)
         {
@@ -10432,7 +10432,7 @@ NC5_put_vara(int ncid, int varid,
 	if(varp->shape[0] == 0) {
 	    (void*)memcpy((void*)modedges,(void*)varp->shape,
                           sizeof(size_t)*varp->ndims);
-	    modedges[0] = NC_get_numrecs(nc5);
+	    modedges[0] = NC5_get_numrecs(nc5);
 	    edges = modedges;
 	} else
 	    edges = varp->shape;

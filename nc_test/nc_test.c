@@ -190,10 +190,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_get_var_long);
 	NC_TEST(nc_get_var_float);
 	NC_TEST(nc_get_var_double);
-	NC_TEST(nc_get_var_ushort);
-	NC_TEST(nc_get_var_uint);
-	NC_TEST(nc_get_var_longlong);
-	NC_TEST(nc_get_var_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_get_var_ushort);
+		NC_TEST(nc_get_var_uint);
+		NC_TEST(nc_get_var_longlong);
+		NC_TEST(nc_get_var_ulonglong);
+	}
 	NC_TEST(nc_get_var1_text);
 	NC_TEST(nc_get_var1_uchar);
 	NC_TEST(nc_get_var1_schar);
@@ -202,10 +204,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_get_var1_long);
 	NC_TEST(nc_get_var1_float);
 	NC_TEST(nc_get_var1_double);
-	NC_TEST(nc_get_var1_ushort);
-	NC_TEST(nc_get_var1_uint);
-	NC_TEST(nc_get_var1_longlong);
-	NC_TEST(nc_get_var1_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_get_var1_ushort);
+		NC_TEST(nc_get_var1_uint);
+		NC_TEST(nc_get_var1_longlong);
+		NC_TEST(nc_get_var1_ulonglong);
+	}
 	NC_TEST(nc_get_var1);
 	NC_TEST(nc_get_vara_text);
 	NC_TEST(nc_get_vara_uchar);
@@ -215,10 +219,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_get_vara_long);
 	NC_TEST(nc_get_vara_float);
 	NC_TEST(nc_get_vara_double);
-	NC_TEST(nc_get_vara_ushort);
-	NC_TEST(nc_get_vara_uint);
-	NC_TEST(nc_get_vara_longlong);
-	NC_TEST(nc_get_vara_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_get_vara_ushort);
+		NC_TEST(nc_get_vara_uint);
+		NC_TEST(nc_get_vara_longlong);
+		NC_TEST(nc_get_vara_ulonglong);
+	}
 	NC_TEST(nc_get_vara);
 	NC_TEST(nc_get_vars_text);
 	NC_TEST(nc_get_vars_uchar);
@@ -228,10 +234,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_get_vars_long);
 	NC_TEST(nc_get_vars_float);
 	NC_TEST(nc_get_vars_double);
-	NC_TEST(nc_get_vars_ushort);
-	NC_TEST(nc_get_vars_uint);
-	NC_TEST(nc_get_vars_longlong);
-	NC_TEST(nc_get_vars_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_get_vars_ushort);
+		NC_TEST(nc_get_vars_uint);
+		NC_TEST(nc_get_vars_longlong);
+		NC_TEST(nc_get_vars_ulonglong);
+	}
 	NC_TEST(nc_get_vars);
 	NC_TEST(nc_get_varm_text);
 	NC_TEST(nc_get_varm_uchar);
@@ -241,10 +249,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_get_varm_long);
 	NC_TEST(nc_get_varm_float);
 	NC_TEST(nc_get_varm_double);
-	NC_TEST(nc_get_varm_ushort);
-	NC_TEST(nc_get_varm_uint);
-	NC_TEST(nc_get_varm_longlong);
-	NC_TEST(nc_get_varm_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_get_varm_ushort);
+		NC_TEST(nc_get_varm_uint);
+		NC_TEST(nc_get_varm_longlong);
+		NC_TEST(nc_get_varm_ulonglong);
+	}
 	NC_TEST(nc_get_varm);
 	NC_TEST(nc_get_att_text);
 	NC_TEST(nc_get_att_uchar);
@@ -254,10 +264,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_get_att_long);
 	NC_TEST(nc_get_att_float);
 	NC_TEST(nc_get_att_double);
-	NC_TEST(nc_get_att_ushort);
-	NC_TEST(nc_get_att_uint);
-	NC_TEST(nc_get_att_longlong);
-	NC_TEST(nc_get_att_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_get_att_ushort);
+		NC_TEST(nc_get_att_uint);
+		NC_TEST(nc_get_att_longlong);
+		NC_TEST(nc_get_att_ulonglong);
+	}
 	NC_TEST(nc_get_att);
 	NC_TEST(nc_inq_att);
 	NC_TEST(nc_inq_attname);
@@ -282,10 +294,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_put_var_long);
 	NC_TEST(nc_put_var_float);
 	NC_TEST(nc_put_var_double);
-	NC_TEST(nc_put_var_ushort);
-	NC_TEST(nc_put_var_uint);
-	NC_TEST(nc_put_var_longlong);
-	NC_TEST(nc_put_var_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_put_var_ushort);
+		NC_TEST(nc_put_var_uint);
+		NC_TEST(nc_put_var_longlong);
+		NC_TEST(nc_put_var_ulonglong);
+	}
 	NC_TEST(nc_put_var1_text);
 	NC_TEST(nc_put_var1_uchar);
 	NC_TEST(nc_put_var1_schar);
@@ -294,10 +308,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_put_var1_long);
 	NC_TEST(nc_put_var1_float);
 	NC_TEST(nc_put_var1_double);
-	NC_TEST(nc_put_var1_ushort);
-	NC_TEST(nc_put_var1_uint);
-	NC_TEST(nc_put_var1_longlong);
-	NC_TEST(nc_put_var1_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_put_var1_ushort);
+		NC_TEST(nc_put_var1_uint);
+		NC_TEST(nc_put_var1_longlong);
+		NC_TEST(nc_put_var1_ulonglong);
+	}
 	NC_TEST(nc_put_var1);
 	NC_TEST(nc_put_vara_text);
 	NC_TEST(nc_put_vara_uchar);
@@ -307,10 +323,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_put_vara_long);
 	NC_TEST(nc_put_vara_float);
 	NC_TEST(nc_put_vara_double);
-	NC_TEST(nc_put_vara_ushort);
-	NC_TEST(nc_put_vara_uint);
-	NC_TEST(nc_put_vara_longlong);
-	NC_TEST(nc_put_vara_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_put_vara_ushort);
+		NC_TEST(nc_put_vara_uint);
+		NC_TEST(nc_put_vara_longlong);
+		NC_TEST(nc_put_vara_ulonglong);
+	}
 	NC_TEST(nc_put_vara);
 	NC_TEST(nc_put_vars_text);
 	NC_TEST(nc_put_vars_uchar);
@@ -320,10 +338,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_put_vars_long);
 	NC_TEST(nc_put_vars_float);
 	NC_TEST(nc_put_vars_double);
-	NC_TEST(nc_put_vars_ushort);
-	NC_TEST(nc_put_vars_uint);
-	NC_TEST(nc_put_vars_longlong);
-	NC_TEST(nc_put_vars_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_put_vars_ushort);
+		NC_TEST(nc_put_vars_uint);
+		NC_TEST(nc_put_vars_longlong);
+		NC_TEST(nc_put_vars_ulonglong);
+	}
 	NC_TEST(nc_put_vars);
 	NC_TEST(nc_put_varm_text);
 	NC_TEST(nc_put_varm_uchar);
@@ -333,10 +353,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_put_varm_long);
 	NC_TEST(nc_put_varm_float);
 	NC_TEST(nc_put_varm_double);
-	NC_TEST(nc_put_varm_ushort);
-	NC_TEST(nc_put_varm_uint);
-	NC_TEST(nc_put_varm_longlong);
-	NC_TEST(nc_put_varm_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_put_varm_ushort);
+		NC_TEST(nc_put_varm_uint);
+		NC_TEST(nc_put_varm_longlong);
+		NC_TEST(nc_put_varm_ulonglong);
+	}
 	NC_TEST(nc_put_varm);
 	NC_TEST(nc_rename_var);
 	NC_TEST(nc_put_att_text);
@@ -346,11 +368,12 @@ main(int argc, char *argv[])
 	NC_TEST(nc_put_att_int);
 	NC_TEST(nc_put_att_long);
 	NC_TEST(nc_put_att_float);
-	NC_TEST(nc_put_att_ulonglong);
-	NC_TEST(nc_put_att_ushort);
-	NC_TEST(nc_put_att_uint);
-	NC_TEST(nc_put_att_longlong);
-	NC_TEST(nc_put_att_ulonglong);
+	if (i == NC_FORMAT_CDF5) {
+		NC_TEST(nc_put_att_ushort);
+		NC_TEST(nc_put_att_uint);
+		NC_TEST(nc_put_att_longlong);
+		NC_TEST(nc_put_att_ulonglong);
+	}
 	NC_TEST(nc_put_att);
 	NC_TEST(nc_copy_att);
 	NC_TEST(nc_rename_att);

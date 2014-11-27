@@ -172,7 +172,7 @@ NC_check_file_type(const char *path, int use_parallel, void *mpi_info,
             *version = 5; /* netcdf classic version 5 */
 	 else
 	    {status = NC_ENOTNC; goto done;}
-	 *model = (use_parallel) ? NC_DISPATCH_NC5 : NC_DISPATCH_NC3;
+	 *model = (use_parallel || *version == 5) ? NC_DISPATCH_NC5 : NC_DISPATCH_NC3;
      } else
         {status = NC_ENOTNC; goto done;}
 
@@ -1737,7 +1737,7 @@ NC_open(const char *path, int cmode,
       cmode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
       if(version == 2) cmode |= NC_64BIT_OFFSET;
       else if(version == 5) cmode |= NC_64BIT_DATA;
-      cmode |= NC_PNETCDF;
+      if (useparallel) cmode |= NC_PNETCDF;
    }
 
    if((cmode & NC_MPIIO && cmode & NC_MPIPOSIX))
@@ -1762,11 +1762,9 @@ NC_open(const char *path, int cmode,
 	dispatcher = NCD2_dispatch_table;
    else
 #endif
-#if  defined(USE_PNETCDF)
    if(model == (NC_DISPATCH_NC5))
 	dispatcher = NC5_dispatch_table;
    else
-#endif
 #if defined(USE_NETCDF4)
    if(model == (NC_DISPATCH_NC4))
 	dispatcher = NC4_dispatch_table;
