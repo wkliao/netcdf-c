@@ -168,8 +168,7 @@ mmapio_new(const char* path, int ioflags, off_t initialsize, ncio** nciopp, NCMM
     mmapio->persist = fIsSet(ioflags,NC_WRITE);
 
     /* See if ok to use mmap */
-    if(sizeof(void*) < 8 &&
-       (fIsSet(ioflags,NC_64BIT_OFFSET) || fIsSet(ioflags,NC_64BIT_DATA)))
+    if(sizeof(void*) < 8 && (fIsSet(ioflags,NC_64BIT_OFFSET) || fIsSet(ioflags,NC_64BIT_DATA)))
 	return NC_DISKLESS; /* cannot support */
     mmapio->mapfd = -1;
 

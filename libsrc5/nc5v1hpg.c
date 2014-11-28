@@ -1,9 +1,3 @@
-/*
- *	Copyright 1996, University Corporation for Atmospheric Research
- *      See netcdf/COPYRIGHT file for copying and redistribution conditions.
- */
-/* $Id$ */
-
 #include "config.h"
 #include "nc5internal.h"
 #include <stdlib.h>
@@ -20,7 +14,7 @@
  * offsets instead of the 32-bit file offsets in version 
  * one files.
  * For each of the components of the NC structure,
- * There are (static) nc5x_len_XXX(), v1h_put_XXX()
+ * There are (static) nc5i_len_XXX(), v1h_put_XXX()
  * and v1h_get_XXX() functions. These define the
  * external representation of the components.
  * The exported entry points for the whole NC structure
@@ -399,7 +393,7 @@ v1h_get_NC_dim(v1hs *gsp, NC_dim **dimpp)
 	if(status != ENOERR)
 		return status;
 
-	dimp = nc5x_new_x_NC_dim(ncstrp);
+	dimp = nc5i_new_x_NC_dim(ncstrp);
 	if(dimp == NULL)
 	{
 		status = NC_ENOMEM;
@@ -409,7 +403,7 @@ v1h_get_NC_dim(v1hs *gsp, NC_dim **dimpp)
 	status = v1h_get_size_t(gsp, &dimp->size);
 	if(status != ENOERR)
 	{
-		nc5x_free_NC_dim(dimp); /* frees name */
+		nc5i_free_NC_dim(dimp); /* frees name */
 		return status;
 	}
 
@@ -538,7 +532,7 @@ v1h_get_NC_dimarray(v1hs *gsp, NC_dimarray *ncap)
 			if(status)
 			{
 				ncap->nelems = (size_t)(dpp - ncap->value);
-				nc5x_free_NC_dimarrayV(ncap);
+				nc5i_free_NC_dimarrayV(ncap);
 				return status;
 			}
 		}
@@ -691,7 +685,7 @@ v1h_get_NC_attr(v1hs *gsp, NC_attr **attrpp)
 	if(status != ENOERR)
 		goto unwind_name;
 
-	attrp = nc5x_new_x_NC_attr(strp, type, nelems);
+	attrp = nc5i_new_x_NC_attr(strp, type, nelems);
 	if(attrp == NULL)
 	{
 		status = NC_ENOMEM;
@@ -701,7 +695,7 @@ v1h_get_NC_attr(v1hs *gsp, NC_attr **attrpp)
 	status = v1h_get_NC_attrV(gsp, attrp);
 	if(status != ENOERR)
 	{
-		nc5x_free_NC_attr(attrp); /* frees strp */
+		nc5i_free_NC_attr(attrp); /* frees strp */
 		return status;
 	}
 
@@ -829,7 +823,7 @@ v1h_get_NC_attrarray(v1hs *gsp, NC_attrarray *ncap)
 			if(status)
 			{
 				ncap->nelems = (size_t)(app - ncap->value);
-				nc5x_free_NC_attrarrayV(ncap);
+				nc5i_free_NC_attrarrayV(ncap);
 				return status;
 			}
 		}
@@ -945,7 +939,7 @@ v1h_get_NC_var(v1hs *gsp, NC_var **varpp)
 	if(status != ENOERR)
 		goto unwind_name;
 
-	varp = nc5x_new_x_NC_var(strp, ndims);
+	varp = nc5i_new_x_NC_var(strp, ndims);
 	if(varp == NULL)
 	{
 		status = NC_ENOMEM;
@@ -995,7 +989,7 @@ v1h_get_NC_var(v1hs *gsp, NC_var **varpp)
 	return ENOERR;
 
 unwind_alloc:
-	nc5x_free_NC_var(varp); /* frees name */
+	nc5i_free_NC_var(varp); /* frees name */
 	return status;
 
 unwind_name:
@@ -1119,7 +1113,7 @@ v1h_get_NC_vararray(v1hs *gsp, NC_vararray *ncap)
 			if(status)
 			{
 				ncap->nelems = (size_t)(vpp - ncap->value);
-				nc5x_free_NC_vararrayV(ncap);
+				nc5i_free_NC_vararrayV(ncap);
 				return status;
 			}
 		}
@@ -1217,7 +1211,7 @@ NC_computeshapes(NC5_INFO* ncp)
 
 /* How much space in the header is required for the NC data structure? */
 size_t
-nc5x_len_NC(const NC5_INFO* ncp, size_t sizeof_off_t)
+nc5i_len_NC(const NC5_INFO* ncp, size_t sizeof_off_t)
 {
 	int version=1;
 	size_t xlen = sizeof(ncmagic);
@@ -1240,7 +1234,7 @@ nc5x_len_NC(const NC5_INFO* ncp, size_t sizeof_off_t)
 
 /* Write the file header */
 int
-nc5x_put_NC(const NC5_INFO* ncp, void **xpp, off_t offset, size_t extent)
+nc5i_put_NC(const NC5_INFO* ncp, void **xpp, off_t offset, size_t extent)
 {
 	int status = ENOERR;
 	v1hs ps; /* the get stream */
@@ -1462,7 +1456,7 @@ nc5_get_NC(NC5_INFO* ncp)
 	if(status != ENOERR)
 		goto unwind_get;
 		
-	ncp->xsz = nc5x_len_NC(ncp, (gs.version == 1) ? 4 : 8);
+	ncp->xsz = nc5i_len_NC(ncp, (gs.version == 1) ? 4 : 8);
 
 	status = NC_computeshapes(ncp);
 	if(status != ENOERR)

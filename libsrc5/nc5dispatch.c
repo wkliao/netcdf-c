@@ -1,9 +1,3 @@
-/*********************************************************************
- *   Copyright 1993, UCAR/Unidata
- *   See netcdf/COPYRIGHT file for copying and redistribution conditions.
- *   $Id$
- *********************************************************************/
-
 /* WARNING: Order of mpi.h, nc.h, and pnetcdf.h is important */
 #include "config.h"
 #include <stdlib.h>

@@ -1,11 +1,5 @@
-/*
- *	Copyright 1996, University Corporation for Atmospheric Research
- *	See netcdf/COPYRIGHT file for copying and redistribution conditions.
- */
-/* "$Id: ncx.h 2781 2014-10-24 19:12:09Z wkliao $" */
-
-#ifndef _NCX_H_
-#define _NCX_H_
+#ifndef _NC5NCX_H_
+#define _NC5NCX_H_
 
 #include "ncdispatch.h"
 #include "ncio.h"
@@ -34,6 +28,12 @@
 #include <sys/types.h> /* off_t */
 #include <ncdispatch.h>
 
+#ifndef ushort
+#define ushort unsigned short
+#endif
+#ifndef uint
+#define uint unsigned int
+#endif
 #ifndef longlong
 #define longlong long long
 #endif
@@ -213,7 +213,7 @@ typedef signed char schar;
  *
  * Not all combinations make sense.
  * We may not implement all combinations that make sense.
- * The netcdf functions that use this ncx interface don't
+ * The netcdf functions that use this nc5ncx interface don't
  * use these primitive conversion functions. They use the
  * aggregate conversion functions declared below.
  *
@@ -1001,4 +1001,4 @@ nc5x_putn_void(void **xpp, size_t nchars, const void *vp);
 extern int
 nc5x_pad_putn_void(void **xpp, size_t nchars, const void *vp);
 
-#endif /* _NCX_H_ */
+#endif /* _NC5NCX_H_ */

@@ -3,7 +3,7 @@
  *   See netcdf/README file for copying and redistribution conditions.
  *   Thanks to Philippe Poilbarbe and Antonio S. Cofiño for 
  *   compression additions.
- *   $Id: nccopy.c 2796 2014-10-28 03:40:29Z wkliao $
+ *   $Id: nccopy.c 400 2010-08-27 21:02:52Z russ $
  *********************************************************************/
 
 #include "config.h"		/* for USE_NETCDF4 macro */
@@ -1154,8 +1154,7 @@ count_dims(ncid) {
  * to copy data a record at a time. */
 static int
 nc3_special_case(int ncid, int kind) {
-    if (kind == NC_FORMAT_CLASSIC ||  kind == NC_FORMAT_CDF2 ||
-        kind == NC_FORMAT_CDF5) {
+    if (kind == NC_FORMAT_CLASSIC || kind == NC_FORMAT_CDF2 || kind == NC_FORMAT_CDF5) {
 	int recdimid = 0;
 	NC_CHECK(nc_inq_unlimdim(ncid, &recdimid));
 	if (recdimid != -1) {	/* we have a record dimension */
@@ -1365,8 +1364,7 @@ copy(char* infile, char* outfile)
     if (option_kind == SAME_AS_INPUT) {	/* default, kind not specified */
 	outkind = inkind;
 	/* Deduce output kind if netCDF-4 features requested */
-	if (inkind == NC_FORMAT_CLASSIC || inkind == NC_FORMAT_CDF2 ||
-	    inkind == NC_FORMAT_CDF5) { 
+	if (inkind == NC_FORMAT_CLASSIC || inkind == NC_FORMAT_CDF2 || inkind == NC_FORMAT_CDF5) { 
 	    if (option_deflate_level > 0 || 
 		option_shuffle_vars == NC_SHUFFLE || 
 		option_chunkspec) 

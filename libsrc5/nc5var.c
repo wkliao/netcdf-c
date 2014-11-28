@@ -1,9 +1,3 @@
-/*
- *	Copyright 1996, University Corporation for Atmospheric Research
- *      See netcdf/COPYRIGHT file for copying and redistribution conditions.
- */
-/* $Id$ */
-
 #include "config.h"
 #include "nc5internal.h"
 #include <stdlib.h>
@@ -28,11 +22,11 @@
  * Formerly NC_free_var(var)
  */
 void
-nc5x_free_NC_var(NC_var *varp)
+nc5i_free_NC_var(NC_var *varp)
 {
 	if(varp == NULL)
 		return;
-	nc5x_free_NC_attrarrayV(&varp->attrs);
+	nc5i_free_NC_attrarrayV(&varp->attrs);
 	free_NC_string(varp->name);
 #ifndef MALLOCHACK
 	if(varp->dimids != NULL) free(varp->dimids);
@@ -48,7 +42,7 @@ nc5x_free_NC_var(NC_var *varp)
  * and ncx_get_NC_var()
  */
 NC_var *
-nc5x_new_x_NC_var(
+nc5i_new_x_NC_var(
 	NC_string *strp,
 	size_t ndims)
 {
@@ -123,7 +117,7 @@ new_NC_var(const char *uname, nc_type type,
 	if(strp == NULL)
 	  return NULL;
 
-	varp = nc5x_new_x_NC_var(strp, ndims);
+	varp = nc5i_new_x_NC_var(strp, ndims);
 	if(varp == NULL )
 	{
 		free_NC_string(strp);
@@ -151,9 +145,9 @@ dup_NC_var(const NC_var *rvarp)
 		return NULL;
 
 
-	if(nc5x_dup_NC_attrarrayV(&varp->attrs, &rvarp->attrs) != NC_NOERR)
+	if(nc5i_dup_NC_attrarrayV(&varp->attrs, &rvarp->attrs) != NC_NOERR)
 	{
-		nc5x_free_NC_var(varp);
+		nc5i_free_NC_var(varp);
 		return NULL;
 	}
 
@@ -177,7 +171,7 @@ dup_NC_var(const NC_var *rvarp)
  * Leaves the array itself allocated.
  */
 static void
-free_NC_vararrayV0(NC_vararray *ncap)
+nc5i_free_NC_vararrayV0(NC_vararray *ncap)
 {
 	assert(ncap != NULL);
 
@@ -191,7 +185,7 @@ free_NC_vararrayV0(NC_vararray *ncap)
 		NC_var *const *const end = &vpp[ncap->nelems];
 		for( /*NADA*/; vpp < end; vpp++)
 		{
-			nc5x_free_NC_var(*vpp);
+			nc5i_free_NC_var(*vpp);
 			*vpp = NULL;
 		}
 	}
@@ -205,7 +199,7 @@ free_NC_vararrayV0(NC_vararray *ncap)
 NC_free_array()
  */
 void
-nc5x_free_NC_vararrayV(NC_vararray *ncap)
+nc5i_free_NC_vararrayV(NC_vararray *ncap)
 {
 	assert(ncap != NULL);
 
@@ -214,7 +208,7 @@ nc5x_free_NC_vararrayV(NC_vararray *ncap)
 
 	assert(ncap->value != NULL);
 
-	free_NC_vararrayV0(ncap);
+	nc5i_free_NC_vararrayV0(ncap);
 
 	free(ncap->value);
 	ncap->value = NULL;
@@ -223,7 +217,7 @@ nc5x_free_NC_vararrayV(NC_vararray *ncap)
 
 
 int
-nc5x_dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref)
+nc5i_dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref)
 {
 	int status = NC_NOERR;
 
@@ -258,7 +252,7 @@ nc5x_dup_NC_vararrayV(NC_vararray *ncap, const NC_vararray *ref)
 
 	if(status != NC_NOERR)
 	{
-		nc5x_free_NC_vararrayV(ncap);
+		nc5i_free_NC_vararrayV(ncap);
 		return status;
 	}
 
@@ -333,7 +327,7 @@ elem_NC_vararray(const NC_vararray *ncap, size_t elem)
 NC_hvarid
  */
 static int
-NC_findvar(const NC_vararray *ncap, const char *uname, NC_var **varpp)
+NC5_findvar(const NC_vararray *ncap, const char *uname, NC_var **varpp)
 {
 	NC_var **loc;
  	uint32_t shash;
@@ -438,7 +432,7 @@ NC5_var_shape(NC_var *varp, const NC_dimarray *dims)
 		if(*ip < 0 || (size_t) (*ip) >= ((dims != NULL) ? dims->nelems : 1) )
 			return NC_EBADDIM;
 
-		dimp = nc5x_elem_NC_dimarray(dims, (size_t)*ip);
+		dimp = nc5i_elem_NC_dimarray(dims, (size_t)*ip);
 		*op = dimp->size;
 		if(*op == NC_UNLIMITED && ip != varp->dimids)
 			return NC_EUNLIMPOS;
@@ -595,7 +589,7 @@ NC5_def_var( int ncid, const char *name, nc_type type,
 		return NC_EMAXVARS;
 	}
 
-	varid = NC_findvar(&ncp->vars, name, &varp);
+	varid = NC5_findvar(&ncp->vars, name, &varp);
 	if(varid != -1)
 	{
 		return NC_ENAMEINUSE;
@@ -608,14 +602,14 @@ NC5_def_var( int ncid, const char *name, nc_type type,
 	status = NC5_var_shape(varp, &ncp->dims);
 	if(status != NC_NOERR)
 	{
-		nc5x_free_NC_var(varp);
+		nc5i_free_NC_var(varp);
 		return status;
 	}
 
 	status = incr_NC_vararray(&ncp->vars, varp);
 	if(status != NC_NOERR)
 	{
-		nc5x_free_NC_var(varp);
+		nc5i_free_NC_var(varp);
 		return status;
 	}
 
@@ -643,7 +637,7 @@ NC5_inq_varid(int ncid, const char *name, int *varid_ptr)
 	if (ncp->use_parallel)
 		return ncmpi_inq_varid(nc->int_ncid,name,varid_ptr);
 #endif
-	varid = NC_findvar(&ncp->vars, name, &varp);
+	varid = NC5_findvar(&ncp->vars, name, &varp);
 	if(varid == -1)
 	{
 		return NC_ENOTVAR;
@@ -736,7 +730,7 @@ NC5_rename_var(int ncid, int varid, const char *unewname)
 		return status;
 
 	/* check for name in use */
-	other = NC_findvar(&ncp->vars, unewname, &varp);
+	other = NC5_findvar(&ncp->vars, unewname, &varp);
 	if(other != -1)
 	{
 		return NC_ENAMEINUSE;
@@ -776,7 +770,7 @@ NC5_rename_var(int ncid, int varid, const char *unewname)
 
 	if(NC_doHsync(ncp))
 	{
-		status = nc5x_sync(ncp);
+		status = nc5i_sync(ncp);
 		if(status != NC_NOERR)
 			return status;
 	}

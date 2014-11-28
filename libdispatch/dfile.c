@@ -193,9 +193,8 @@ and attributes.
 
 \param cmode The creation mode flag. The following flags are
 available: NC_NOCLOBBER (do not overwrite existing file), NC_SHARE
-(limit write caching - netcdf classic files onlt), NC_64BIT_OFFSET
-(create 64-bit offset file), NC_64BIT_DATA (create CDF-5 file),
-NC_NETCDF4 (create netCDF-4/HDF5 file),
+(limit write caching - netcdf classic files only), NC_64BIT_OFFSET
+(create 64-bit offset file), NC_64BIT_DATA (create CDF-5 file), NC_NETCDF4 (create netCDF-4/HDF5 file),
 NC_CLASSIC_MODEL (enforce netCDF classic mode on netCDF-4/HDF5
 files), NC_DISKLESS (store data only in memory), NC_MMAP (use MMAP
 for NC_DISKLESS), and NC_WRITE.
@@ -452,10 +451,6 @@ int
 nc__create(const char *path, int cmode, size_t initialsz,
 	   size_t *chunksizehintp, int *ncidp)
 {
-   /* this API is for non-parallel access, should we check for illegal cmode
-    * flags, such as NC_PNETCDF, NC_MPIIO, or NC_MPIPOSIX, before entering
-    * NC_create()? Note nc_create_par() also calls NC_create().
-    */
    return NC_create(path, cmode, initialsz, 0, 
 		    chunksizehintp, 0, NULL, ncidp);
 
@@ -593,10 +588,6 @@ if (status != NC_NOERR) handle_error(status);
 int
 nc_open(const char *path, int mode, int *ncidp)
 {
-   /* this API is for non-parallel access, should we check for illegal cmode
-    * flags, such as NC_PNETCDF, NC_MPIIO, or NC_MPIPOSIX, before entering
-    * NC_open()? Note nc_open_par() also calls NC_open().
-    */
    return NC_open(path, mode, 0, NULL, 0, NULL, ncidp);
 }
 
@@ -655,10 +646,6 @@ int
 nc__open(const char *path, int mode,
 	 size_t *chunksizehintp, int *ncidp)
 {
-   /* this API is for non-parallel access, should we check for illegal cmode
-    * flags, such as NC_PNETCDF, NC_MPIIO, or NC_MPIPOSIX, before entering
-    * NC_open()? Note nc_open_par() also calls NC_open().
-    */
    return NC_open(path, mode, 0, chunksizehintp, 0, 
 		  NULL, ncidp);
 }

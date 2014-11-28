@@ -1,9 +1,3 @@
-/*********************************************************************
- *   Copyright 1993, UCAR/Unidata
- *   See netcdf/COPYRIGHT file for copying and redistribution conditions.
- *   $Id$
- *********************************************************************/
-
 /* WARNING: Order of mpi.h, nc.h, and pnetcdf.h is important */
 #include "config.h"
 #include <stdlib.h>
@@ -53,9 +47,9 @@ free_NC5INFO(NC5_INFO *nc5)
 {
 	if(nc5 == NULL)
 		return;
-	nc5x_free_NC_dimarrayV(&nc5->dims);
-	nc5x_free_NC_attrarrayV(&nc5->attrs);
-	nc5x_free_NC_vararrayV(&nc5->vars);
+	nc5i_free_NC_dimarrayV(&nc5->dims);
+	nc5i_free_NC_attrarrayV(&nc5->attrs);
+	nc5i_free_NC_vararrayV(&nc5->vars);
 #if _CRAYMPP && defined(LOCKNUMREC)
 	shfree(nc5);
 #else
@@ -71,7 +65,7 @@ new_NC5INFO(const size_t *chunkp)
 	if(ncp == NULL) return ncp;
 /* delay this setting
 	ncp->xsz = MIN_NC_XSZ;
-	assert(ncp->xsz == nc5x_len_NC(ncp,0));
+	assert(ncp->xsz == nc5i_len_NC(ncp,0));
 */
         ncp->chunk = chunkp != NULL ? *chunkp : NC_SIZEHINT_DEFAULT;
 	return ncp;
@@ -84,11 +78,11 @@ dup_NC5INFO(const NC5_INFO *ref)
 	ncp = (NC5_INFO*)calloc(1,sizeof(NC5_INFO));
 	if(ncp == NULL) return ncp;
 
-	if(nc5x_dup_NC_dimarrayV(&ncp->dims, &ref->dims) != NC_NOERR)
+	if(nc5i_dup_NC_dimarrayV(&ncp->dims, &ref->dims) != NC_NOERR)
 		goto err;
-	if(nc5x_dup_NC_attrarrayV(&ncp->attrs, &ref->attrs) != NC_NOERR)
+	if(nc5i_dup_NC_attrarrayV(&ncp->attrs, &ref->attrs) != NC_NOERR)
 		goto err;
-	if(nc5x_dup_NC_vararrayV(&ncp->vars, &ref->vars) != NC_NOERR)
+	if(nc5i_dup_NC_vararrayV(&ncp->vars, &ref->vars) != NC_NOERR)
 		goto err;
 
 	ncp->xsz = ref->xsz;
@@ -128,7 +122,7 @@ nc5_cktype(int mode, nc_type type)
  * will fit into xbufsize?
  */
 size_t
-nc5x_howmany(nc_type type, size_t xbufsize)
+nc5i_howmany(nc_type type, size_t xbufsize)
 {
 	switch(type){
 	case NC_BYTE:
@@ -152,7 +146,7 @@ nc5x_howmany(nc_type type, size_t xbufsize)
 	case NC_UINT64:
 		return xbufsize/X_SIZEOF_ULONGLONG;
 	default:
-	        assert("nc5x_howmany: Bad type" == 0);
+	        assert("nc5i_howmany: Bad type" == 0);
 		return(0);
 	}
 }
@@ -187,7 +181,7 @@ NC_begins(NC5_INFO* ncp,
 	  sizeof_off_t = 4;
 	}
 
-	ncp->xsz = nc5x_len_NC(ncp,sizeof_off_t);
+	ncp->xsz = nc5i_len_NC(ncp,sizeof_off_t);
 
 	if(ncp->vars.nelems == 0)
 		return NC_NOERR;
@@ -347,7 +341,7 @@ fprintf(stderr, "    REC %d %s: %ld\n", ii, (*vpp)->name->cp, (long)index);
  * (A relatively expensive way to do things.)
  */
 int
-nc5x_read_numrecs(NC5_INFO *ncp)
+nc5i_read_numrecs(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 	const void *xp = NULL;
@@ -391,7 +385,7 @@ nc5x_read_numrecs(NC5_INFO *ncp)
  * (A relatively expensive way to do things.)
  */
 int
-nc5x_write_numrecs(NC5_INFO *ncp)
+nc5i_write_numrecs(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 	void *xp = NULL;
@@ -434,9 +428,9 @@ read_NC(NC5_INFO *ncp)
 {
 	int status = NC_NOERR;
 
-	nc5x_free_NC_dimarrayV(&ncp->dims);
-	nc5x_free_NC_attrarrayV(&ncp->attrs);
-	nc5x_free_NC_vararrayV(&ncp->vars);
+	nc5i_free_NC_dimarrayV(&ncp->dims);
+	nc5i_free_NC_attrarrayV(&ncp->attrs);
+	nc5i_free_NC_vararrayV(&ncp->vars);
 
 	status = nc5_get_NC(ncp);
 
@@ -457,7 +451,7 @@ write_NC(NC5_INFO *ncp)
 
 	assert(!NC_readonly(ncp));
 
-	status = nc5x_put_NC(ncp, NULL, 0, 0);
+	status = nc5i_put_NC(ncp, NULL, 0, 0);
 
 	if(status == NC_NOERR)
 		fClr(ncp->flags, NC_NDIRTY | NC_HDIRTY);
@@ -470,7 +464,7 @@ write_NC(NC5_INFO *ncp)
  * Write the header or the numrecs if necessary.
  */
 int
-nc5x_sync(NC5_INFO *ncp)
+nc5i_sync(NC5_INFO *ncp)
 {
 	assert(!NC_readonly(ncp));
 
@@ -482,7 +476,7 @@ nc5x_sync(NC5_INFO *ncp)
 
 	if(NC_ndirty(ncp))
 	{
-		return nc5x_write_numrecs(ncp);
+		return nc5i_write_numrecs(ncp);
 	}
 	/* else */
 
@@ -513,7 +507,7 @@ fillerup(NC5_INFO *ncp)
 			continue;
 		}
 
-		status = nc5x_fill_NC_var(ncp, *varpp, (*varpp)->len, 0);
+		status = nc5i_fill_NC_var(ncp, *varpp, (*varpp)->len, 0);
 		if(status != NC_NOERR)
 			break;
 	}
@@ -557,7 +551,7 @@ fill_added_recs(NC5_INFO *gnu, NC5_INFO *old)
 			/* else */
 			{
 			    size_t varsize = numrecvars == 1 ? gnu->recsize :  gnu_varp->len;
-			    const int status = nc5x_fill_NC_var(gnu, gnu_varp, varsize, recno);
+			    const int status = nc5i_fill_NC_var(gnu, gnu_varp, varsize, recno);
 			    if(status != NC_NOERR)
 				return status;
 			}
@@ -584,7 +578,7 @@ fill_added(NC5_INFO *gnu, NC5_INFO *old)
 		}
 		/* else */
 		{
-		const int status = nc5x_fill_NC_var(gnu, gnu_varp, gnu_varp->len, 0);
+		const int status = nc5i_fill_NC_var(gnu, gnu_varp, gnu_varp->len, 0);
 		if(status != NC_NOERR)
 			return status;
 		}
@@ -902,7 +896,7 @@ NC_init_pe(NC *ncp, int basepe) {
  * Compute the expected size of the file.
  */
 static int
-NC_calcsize(const NC5_INFO *ncp, off_t *calcsizep)
+nc5i_NC_calcsize(const NC5_INFO *ncp, off_t *calcsizep)
 {
 	NC_var **vpp = (NC_var **)ncp->vars.value;
 	NC_var *const *const end = &vpp[ncp->vars.nelems];
@@ -1001,7 +995,7 @@ nc5_create_file(const char *path, int ioflags,
 		sizeof_off_t = 4;
 	}
 
-	assert(nc5->xsz == nc5x_len_NC(nc5,sizeof_off_t));
+	assert(nc5->xsz == nc5i_len_NC(nc5,sizeof_off_t));
 
         status = ncio_create(path, ioflags, initialsz,
 			     0, nc5->xsz, &nc5->chunk,
@@ -1028,7 +1022,7 @@ nc5_create_file(const char *path, int ioflags,
 		fSet(nc5->flags, NC_NSYNC);
 	}
 
-	status = nc5x_put_NC(nc5, &xp, sizeof_off_t, nc5->xsz);
+	status = nc5i_put_NC(nc5, &xp, sizeof_off_t, nc5->xsz);
 	if(status != NC_NOERR)
 		goto unwind_ioc;
 
@@ -1333,7 +1327,7 @@ NC5_sync(int ncid)
 	}
 	/* else, read/write */
 
-	status = nc5x_sync(nc5);
+	status = nc5i_sync(nc5);
 	if(status != NC_NOERR)
 		return status;
 
@@ -1392,7 +1386,7 @@ NC5_abort(int ncid)
 	}
 	else if(!NC_readonly(nc5))
 	{
-		status = nc5x_sync(nc5);
+		status = nc5i_sync(nc5);
 		if(status != NC_NOERR)
 			return status;
 	}
@@ -1438,7 +1432,7 @@ NC5_close(int ncid)
 	}
 	else if(!NC_readonly(nc5))
 	{
-		status = nc5x_sync(nc5);
+		status = nc5i_sync(nc5);
 		/* flush buffers before any filesize comparisons */
 		(void) ncio_sync(nc5->nciop);
 	}
@@ -1446,7 +1440,7 @@ NC5_close(int ncid)
 	/*
 	 * If file opened for writing and filesize is less than
 	 * what it should be (due to previous use of NOFILL mode),
-	 * pad it to correct size, as reported by NC_calcsize().
+	 * pad it to correct size, as reported by nc5i_NC_calcsize().
 	 */
 	if (status == ENOERR) {
 	    off_t filesize; 	/* current size of open file */
@@ -1454,7 +1448,7 @@ NC5_close(int ncid)
 	    status = ncio_filesize(nc5->nciop, &filesize);
 	    if(status != ENOERR)
 		return status;
-	    status = NC_calcsize(nc5, &calcsize);
+	    status = nc5i_NC_calcsize(nc5, &calcsize);
 	    if(status != NC_NOERR)
 		return status;
 	    if(filesize < calcsize && !NC_readonly(nc5)) {
@@ -1510,7 +1504,7 @@ NC5_set_fill(int ncid,
 			 * We are changing back to fill mode
 			 * so do a sync
 			 */
-			status = nc5x_sync(nc5);
+			status = nc5i_sync(nc5);
 			if(status != NC_NOERR)
 				return status;
 		}
@@ -1719,7 +1713,7 @@ NC5_inq(int ncid,
 	if(nattsp != NULL)
 		*nattsp = (int) nc5->attrs.nelems;
 	if(xtendimp != NULL)
-		*xtendimp = nc5x_find_NC_Udim(&nc5->dims, NULL);
+		*xtendimp = nc5i_find_NC_Udim(&nc5->dims, NULL);
 
 	return NC_NOERR;
 }

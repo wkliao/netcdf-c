@@ -23,7 +23,7 @@
 NC_free_dim(dim)
  */
 void
-nc5x_free_NC_dim(NC_dim *dimp)
+nc5i_free_NC_dim(NC_dim *dimp)
 {
 	if(dimp == NULL)
 		return;
@@ -33,7 +33,7 @@ nc5x_free_NC_dim(NC_dim *dimp)
 
 
 NC_dim *
-nc5x_new_x_NC_dim(NC_string *name)
+nc5i_new_x_NC_dim(NC_string *name)
 {
 	NC_dim *dimp;
 
@@ -67,7 +67,7 @@ new_NC_dim(const char *uname, size_t size)
 	if(strp == NULL)
 		return NULL;
 
-	dimp = nc5x_new_x_NC_dim(strp);
+	dimp = nc5i_new_x_NC_dim(strp);
 	if(dimp == NULL)
 	{
 		free_NC_string(strp);
@@ -94,7 +94,7 @@ dup_NC_dim(const NC_dim *dimp)
  * we moved a clearer 'break' inside the loop body to the loop test.
  */
 int
-nc5x_find_NC_Udim(const NC_dimarray *ncap, NC_dim **dimpp)
+nc5i_find_NC_Udim(const NC_dimarray *ncap, NC_dim **dimpp)
 {
 	assert(ncap != NULL);
 
@@ -176,7 +176,7 @@ NC_finddim(const NC_dimarray *ncap, const char *uname, NC_dim **dimpp)
  * Leaves the array itself allocated.
  */
 static void
-free_NC_dimarrayV0(NC_dimarray *ncap)
+nc5i_free_NC_dimarrayV0(NC_dimarray *ncap)
 {
 	assert(ncap != NULL);
 
@@ -190,7 +190,7 @@ free_NC_dimarrayV0(NC_dimarray *ncap)
 		NC_dim *const *const end = &dpp[ncap->nelems];
 		for( /*NADA*/; dpp < end; dpp++)
 		{
-			nc5x_free_NC_dim(*dpp);
+			nc5i_free_NC_dim(*dpp);
 			*dpp = NULL;
 		}
 	}
@@ -204,7 +204,7 @@ free_NC_dimarrayV0(NC_dimarray *ncap)
 NC_free_array()
  */
 void
-nc5x_free_NC_dimarrayV(NC_dimarray *ncap)
+nc5i_free_NC_dimarrayV(NC_dimarray *ncap)
 {
 	assert(ncap != NULL);
 	
@@ -213,7 +213,7 @@ nc5x_free_NC_dimarrayV(NC_dimarray *ncap)
 
 	assert(ncap->value != NULL);
 
-	free_NC_dimarrayV0(ncap);
+	nc5i_free_NC_dimarrayV0(ncap);
 
 	free(ncap->value);
 	ncap->value = NULL;
@@ -222,7 +222,7 @@ nc5x_free_NC_dimarrayV(NC_dimarray *ncap)
 
 
 int
-nc5x_dup_NC_dimarrayV(NC_dimarray *ncap, const NC_dimarray *ref)
+nc5i_dup_NC_dimarrayV(NC_dimarray *ncap, const NC_dimarray *ref)
 {
 	int status = NC_NOERR;
 
@@ -257,7 +257,7 @@ nc5x_dup_NC_dimarrayV(NC_dimarray *ncap, const NC_dimarray *ref)
 
 	if(status != NC_NOERR)
 	{
-		nc5x_free_NC_dimarrayV(ncap);
+		nc5i_free_NC_dimarrayV(ncap);
 		return status;
 	}
 
@@ -308,7 +308,7 @@ incr_NC_dimarray(NC_dimarray *ncap, NC_dim *newelemp)
 
 
 NC_dim *
-nc5x_elem_NC_dimarray(const NC_dimarray *ncap, size_t elem)
+nc5i_elem_NC_dimarray(const NC_dimarray *ncap, size_t elem)
 {
 	assert(ncap != NULL);
 		/* cast needed for braindead systems with signed size_t */
@@ -360,7 +360,7 @@ NC5_def_dim(int ncid, const char *name, size_t size, int *dimidp)
 
 	if(size == NC_UNLIMITED)
 	{
-		dimid = nc5x_find_NC_Udim(&ncp->dims, &dimp);
+		dimid = nc5i_find_NC_Udim(&ncp->dims, &dimp);
 		if(dimid != -1)
 		{
 			assert(dimid != -1);
@@ -381,7 +381,7 @@ NC5_def_dim(int ncid, const char *name, size_t size, int *dimidp)
 	status = incr_NC_dimarray(&ncp->dims, dimp);
 	if(status != NC_NOERR)
 	{
-		nc5x_free_NC_dim(dimp);
+		nc5i_free_NC_dim(dimp);
 		return status;
 	}
 
@@ -439,7 +439,7 @@ NC5_inq_dim(int ncid, int dimid, char *name, size_t *sizep)
 		return status;
 	}
 #endif
-	dimp = nc5x_elem_NC_dimarray(&ncp->dims, (size_t)dimid);
+	dimp = nc5i_elem_NC_dimarray(&ncp->dims, (size_t)dimid);
 	if(dimp == NULL)
 		return NC_EBADDIM;
 
@@ -489,7 +489,7 @@ NC5_rename_dim( int ncid, int dimid, const char *unewname)
 	if(existid != -1)
 		return NC_ENAMEINUSE;
 
-	dimp = nc5x_elem_NC_dimarray(&ncp->dims, (size_t)dimid);
+	dimp = nc5i_elem_NC_dimarray(&ncp->dims, (size_t)dimid);
 	if(dimp == NULL)
 		return NC_EBADDIM;
 
@@ -521,7 +521,7 @@ NC5_rename_dim( int ncid, int dimid, const char *unewname)
 
 	if(NC_doHsync(ncp))
 	{
-		status = nc5x_sync(ncp);
+		status = nc5i_sync(ncp);
 		if(status != NC_NOERR)
 			return status;
 	}
@@ -543,7 +543,7 @@ NC5_inq_unlimdim(int ncid,  int *unlimdimidp)
         return ncmpi_inq_unlimdim(nc->int_ncid,unlimdimidp);
 #endif
     if (unlimdimidp != NULL)
-        *unlimdimidp = nc5x_find_NC_Udim(&nc5->dims, NULL);
+        *unlimdimidp = nc5i_find_NC_Udim(&nc5->dims, NULL);
 
     return NC_NOERR;
 }
