@@ -25,6 +25,7 @@ build-par
 build_llvm
 .vagrant
 Vagrantfile
+netcdf-fortran
 libsrc/attr.c
 libsrc/ncx.c
 libsrc/putget.c
@@ -51,4 +52,3 @@ m4/ltsugar.m4
 m4/ltversion.m4
 m4/lt~obsolete.m4
 missing
-netcdf-fortran
