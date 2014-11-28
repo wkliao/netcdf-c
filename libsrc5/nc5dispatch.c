@@ -17,7 +17,7 @@
 #include "nc5dispatch.h"
 
 /* Must follow netcdf.h */
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 #include <pnetcdf.h>
 #endif
 

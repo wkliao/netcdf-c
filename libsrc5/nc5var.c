@@ -8,7 +8,7 @@
 #include "rnd.h"
 #include "utf8proc.h"
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 /* Must follow netcdf.h */
 #include <pnetcdf.h>
 #endif
@@ -561,7 +561,7 @@ NC5_def_var( int ncid, const char *name, nc_type type,
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_def_var(nc->int_ncid,name,type,ndims,dimids,varidp);
 #endif
@@ -633,7 +633,7 @@ NC5_inq_varid(int ncid, const char *name, int *varid_ptr)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_inq_varid(nc->int_ncid,name,varid_ptr);
 #endif
@@ -715,7 +715,7 @@ NC5_rename_var(int ncid, int varid, const char *unewname)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_rename_var(nc->int_ncid,varid,unewname);
 #endif

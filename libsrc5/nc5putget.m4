@@ -27,7 +27,7 @@ dnl
 #endif
 #include "nc5dispatch.h"
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 /* Must follow netcdf.h */
 #include <pnetcdf.h>
 #endif
@@ -1616,7 +1616,7 @@ NC5_get_vara(int ncid, int varid,
         return status;
     nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (nc5->use_parallel) {
         MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS];
         int d;
@@ -1822,7 +1822,7 @@ NC5_put_vara(int ncid, int varid,
         return status;
     nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (nc5->use_parallel) {
         MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS];
         int d;
@@ -2020,7 +2020,7 @@ NC5_get_vars(int ncid,
 		void* ip,
 		nc_type memtype)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     int status;
     MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS];
@@ -2117,7 +2117,7 @@ NC5_put_vars(int ncid,
 	const void*ip,
 	nc_type memtype)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     int status;
     MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS];
@@ -2215,7 +2215,7 @@ NC5_get_varm(int ncid,
 		void* ip,
 		nc_type memtype)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     int status;
     MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS], mpi_imap[NC_MAX_VAR_DIMS];
@@ -2313,7 +2313,7 @@ NC5_put_varm(int ncid,
 	const void*ip,
 	nc_type memtype)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     int status;
     MPI_Offset mpi_start[NC_MAX_VAR_DIMS], mpi_count[NC_MAX_VAR_DIMS], mpi_stride[NC_MAX_VAR_DIMS], mpi_imap[NC_MAX_VAR_DIMS];

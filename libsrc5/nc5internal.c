@@ -21,7 +21,7 @@
 #include "rnd.h"
 #include "nc5ncx.h"
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 /* Must follow netcdf.h */
 #include <pnetcdf.h>
 #endif
@@ -1054,7 +1054,7 @@ NC5_create(const char *path, int cmode,
 	  int use_parallel, void* mpidata,
 	  struct NC_Dispatch* table, NC* nc)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (use_parallel) {
         int res, default_format;
         NC5_INFO* nc5;
@@ -1185,7 +1185,7 @@ NC5_open(const char *path, int cmode,
 	    int use_parallel, void* mpidata,
 	    struct NC_Dispatch* table, NC* nc)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (use_parallel) {
         int res;
         NC5_INFO* nc5;
@@ -1243,7 +1243,7 @@ NC5_redef(int ncid)
 		return status;
 	nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
         if (nc5->use_parallel)
             return ncmpi_redef(nc->int_ncid);
 #endif
@@ -1285,7 +1285,7 @@ NC5__enddef(int ncid,
 	return status;
     nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (nc5->use_parallel) {
         status = ncmpi__enddef(nc->int_ncid, h_minfree, v_align, v_minfree, r_align);
         if(status == NC_NOERR) {
@@ -1313,7 +1313,7 @@ NC5_sync(int ncid)
 		return status;
 	nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (nc5->use_parallel)
 		return ncmpi_sync(nc->int_ncid);
 #endif
@@ -1366,7 +1366,7 @@ NC5_abort(int ncid)
 	    return status;
 	nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (nc5->use_parallel) {
 		status = ncmpi_abort(nc->int_ncid);
 		if(nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
@@ -1414,7 +1414,7 @@ NC5_close(int ncid)
 	    return status;
 	nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (nc5->use_parallel) {
 		status = ncmpi_close(nc->int_ncid);
 		if(nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
@@ -1482,7 +1482,7 @@ NC5_set_fill(int ncid,
 		return status;
 	nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (nc5->use_parallel)
 		return ncmpi_set_fill(nc->int_ncid,fillmode,old_mode_ptr);
 #endif
@@ -1557,7 +1557,7 @@ void NC5_increase_numrecs(NC *nc5, size_t nrecs)
 int
 NC5_set_base_pe(int ncid, int pe)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     int status = NC_check_id(ncid, &nc);
     if(status != NC_NOERR) return status;
@@ -1609,7 +1609,7 @@ NC5_set_base_pe(int ncid, int pe)
 int
 NC5_inq_base_pe(int ncid, int *pe)
 {
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     int status = NC_check_id(ncid, &nc);
     if(status != NC_NOERR) return status;
@@ -1674,7 +1674,7 @@ NC5_inq_format_extended(int ncid, int* formatp, int *modep)
 
     if(modep) *modep = nc->mode;
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (((NC5_INFO*)nc->dispatchdata)->use_parallel) {
         if(formatp) *formatp = NC_FORMAT_PNETCDF;
     }
@@ -1702,7 +1702,7 @@ NC5_inq(int ncid,
 		return status;
 	nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (nc5->use_parallel)
 		return ncmpi_inq(nc->int_ncid,ndimsp,nvarsp,nattsp,xtendimp);
 #endif
@@ -1749,7 +1749,7 @@ NC5_inq_type(int ncid, nc_type typeid, char* name, size_t* size)
     status = NC_check_id(ncid, &nc);
     if (status != NC_NOERR) return status;
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (((NC5_INFO*)nc->dispatchdata)->use_parallel)
         status = ncmpi_inq_format(nc->int_ncid, &format);
     else
@@ -1787,7 +1787,7 @@ NC5_inq_var_all(int ncid, int varid, char *name, nc_type *xtypep,
 {
     int status;
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     status = NC_check_id(ncid, &nc);
     if(status != NC_NOERR) return status;
@@ -1817,7 +1817,7 @@ NC5_var_par_access(int ncid, int varid, int par_access)
 
     status = NC_check_id(ncid, &nc);
     if(status != NC_NOERR) return status;
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (par_access != NC_INDEPENDENT && par_access != NC_COLLECTIVE)
 	return NC_EINVAL;
 

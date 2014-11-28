@@ -12,7 +12,7 @@
 #include "fbits.h"
 #include "utf8proc.h"
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 /* Must follow netcdf.h */
 #include <pnetcdf.h>
 #endif
@@ -337,7 +337,7 @@ NC5_def_dim(int ncid, const char *name, size_t size, int *dimidp)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_def_dim(nc->int_ncid, name, size, dimidp);
 #endif
@@ -404,7 +404,7 @@ NC5_inq_dimid(int ncid, const char *name, int *dimid_ptr)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_inq_dimid(nc->int_ncid,name,dimid_ptr);
 #endif
@@ -431,7 +431,7 @@ NC5_inq_dim(int ncid, int dimid, char *name, size_t *sizep)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel) {
 		MPI_Offset mpilen;
 		status = ncmpi_inq_dim(nc->int_ncid,dimid,name,&mpilen);
@@ -474,7 +474,7 @@ NC5_rename_dim( int ncid, int dimid, const char *unewname)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_rename_dim(nc->int_ncid,dimid,unewname);
 #endif
@@ -538,7 +538,7 @@ NC5_inq_unlimdim(int ncid,  int *unlimdimidp)
     if(status != NC_NOERR) return status;
     nc5 = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (nc5->use_parallel)
         return ncmpi_inq_unlimdim(nc->int_ncid,unlimdimidp);
 #endif

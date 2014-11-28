@@ -16,7 +16,7 @@ dnl
 #include "rnd.h"
 #include "utf8proc.h"
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 /* Must follow netcdf.h */
 #include <pnetcdf.h>
 #endif
@@ -421,7 +421,7 @@ NC5_inq_attname(int ncid, int varid, int attnum, char *name)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_inq_attname(nc->int_ncid,varid,attnum,name);
 #endif
@@ -454,7 +454,7 @@ NC5_inq_attid(int ncid, int varid, const char *name, int *attnump)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_inq_attid(nc->int_ncid,varid,name,attnump);
 #endif
@@ -483,7 +483,7 @@ NC5_inq_att(int ncid,
 	int status;
 	NC_attr *attrp;
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	NC* nc;
 	status = NC_check_id(ncid, &nc);
 	if(status != NC_NOERR) return status;
@@ -526,7 +526,7 @@ NC5_rename_att( int ncid, int varid, const char *name, const char *unewname)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_rename_att(nc->int_ncid,varid,name,unewname);
 #endif
@@ -602,7 +602,7 @@ NC5_del_att(int ncid, int varid, const char *uname)
 		return status;
 	ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
 	if (ncp->use_parallel)
 		return ncmpi_del_att(nc->int_ncid,varid,uname);
 #endif
@@ -823,7 +823,7 @@ NC5_put_att(
 	return status;
     ncp = NC5_DATA(nc);
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     if (ncp->use_parallel) {
         if (!name || (strlen(name) > NC_MAX_NAME))
 	    return NC_EBADNAME;
@@ -965,7 +965,7 @@ NC5_get_att(
     NC_attr *attrp;
     const void *xp;
 
-#ifdef USE_PARALLEL
+#ifdef USE_PNETCDF
     NC* nc;
     nc_type xtype;
 
