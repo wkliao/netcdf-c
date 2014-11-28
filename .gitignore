@@ -26,9 +26,6 @@ build_llvm
 .vagrant
 Vagrantfile
 netcdf-fortran
-libsrc/attr.c
-libsrc/ncx.c
-libsrc/putget.c
 libsrc5/nc5attr.c
 libsrc5/nc5ncx.c
 libsrc5/nc5putget.c
@@ -44,7 +41,6 @@ config.sub
 configure
 depcomp
 install-sh
-libsrc/netcdf.3
 ltmain.sh
 m4/libtool.m4
 m4/ltoptions.m4
