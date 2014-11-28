@@ -1,7 +1,7 @@
 /*********************************************************************
  *   Copyright 1996, UCAR/Unidata
  *   See netcdf/COPYRIGHT file for copying and redistribution conditions.
- *   $Id: test_read.c 2792 2014-10-27 06:02:59Z wkliao $
+ *   $Id: test_read.c,v 1.32 2008/04/04 20:23:51 dmh Exp $
  *********************************************************************/
 
 #include "tests.h"
@@ -58,14 +58,14 @@ test_nc_strerror(void)
     /* Try on a bad error status */
     /* Dmh: allow trailing extra info */
     message = nc_strerror(-666);/* should fail */
-    IF (strncmp(message, "Unknown Error", strlen("Unknown Error")) != 0)
+    IF (strcmp(message, "Unknown Error") != 0)
 	error("nc_strerror on bad error status returned: %s", message);
 
     /* Try on each legitimate error status */
     /* Dmh: allow trailing extra info */
     for (i=0; i<LEN_OF(ncerrs); i++) {
 	const char *message = nc_strerror(ncerrs[i].status);
-	IF (strncmp(message, ncerrs[i].msg, strlen(ncerrs[i].msg)) != 0)
+	IF (strcmp(message, ncerrs[i].msg) != 0)
 	    error("nc_strerror(%d) should return `%s', not `%s'",
 		  ncerrs[i].status, ncerrs[i].msg, message);
     }
@@ -92,11 +92,7 @@ test_nc_open(void)
     int ncid2;
     
     /* Try to open a nonexistent file */
-#ifdef TEST_PNETCDF
-    err = nc_open_par("tooth-fairy.nc", NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open("tooth-fairy.nc", NC_NOWRITE, &ncid);/* should fail */
-#endif
     IF (err == NC_NOERR)
 	error("nc_open of nonexistent file should have failed");
 #ifndef USE_PARALLEL
@@ -111,22 +107,14 @@ test_nc_open(void)
     /* 	error("nc_open of non-netCDF file: status = %d", err); */
 
     /* Open a netCDF file in read-only mode, check that write fails */
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     err = nc_redef(ncid);	/* should fail */
     IF (err != NC_EPERM)
 	error("nc_redef of read-only file should fail");
     /* Opened OK, see if can open again and get a different netCDF ID */
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid2);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid2);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     else {
@@ -135,20 +123,12 @@ test_nc_open(void)
     IF (ncid2 == ncid)
 	error("netCDF IDs for first and second nc_open calls should differ");
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid2);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid2);
-#endif
     IF (err) 
        error("nc_create: %s", nc_strerror(err));
     else 
        (void) nc_close(ncid2);
-#ifdef TEST_PNETCDF
-    err = nc_open_par(scratch, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid2);
-#else
     err = nc_open(scratch, NC_WRITE, &ncid2);
-#endif
     IF (err) 
        error("nc_open: %s", nc_strerror(err));
     else 
@@ -172,12 +152,8 @@ test_nc_open(void)
 void
 test_nc_close(void)
 {
-    int ncid, err;
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
-    err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
+    int ncid;
+    int err = nc_open(testfile, NC_NOWRITE, &ncid);
 
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
@@ -196,22 +172,14 @@ test_nc_close(void)
 	error("nc_close with bad netCDF ID returned wrong error (%d)", err);
 
     /* Close in data mode */
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     err = nc_close(ncid);
     IF (err)
 	error("nc_close in data mode failed: %s", nc_strerror(err));
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) 
        error("nc_create: %s", nc_strerror(err));
     err = nc_close(ncid);
@@ -240,12 +208,7 @@ test_nc_inq(void)
     int nvars;			/* number of variables */
     int ngatts;			/* number of global attributes */
     int recdim;			/* id of unlimited dimension */
-    int err;
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
-    err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
+    int err = nc_open(testfile, NC_NOWRITE, &ncid);
 
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
@@ -260,9 +223,9 @@ test_nc_inq(void)
 	error("nc_inq: %s", nc_strerror(err));
     else IF (ndims != NDIMS)
 	error("nc_inq: wrong number of dimensions returned, %d", ndims);
-    else IF (nvars != numVars)
+    else IF (nvars != NVARS)
 	error("nc_inq: wrong number of variables returned, %d", nvars);
-    else IF (ngatts != numGatts)
+    else IF (ngatts != NGATTS)
 	error("nc_inq: wrong number of global atts returned, %d", ngatts);
     else IF (recdim != RECDIM)
 	error("nc_inq: wrong record dimension ID returned, %d", recdim);
@@ -273,30 +236,26 @@ test_nc_inq(void)
 	error("nc_inq for no info failed: %s", nc_strerror(err));
 
     /* Inguire for subsets of info */
-    ngatts = numGatts - 1;	/* wipe out previous correct value */
+    ngatts = NGATTS - 1;	/* wipe out previous correct value */
     err = nc_inq(ncid, 0, 0, &ngatts, 0);
     IF (err)
 	error("nc_inq for one item failed: %s", nc_strerror(err));
-    else IF (ngatts != numGatts)
+    else IF (ngatts != NGATTS)
 	error("nc_inq subset: wrong number of global atts returned, %d", ngatts);
     ndims = NDIMS - 1;
-    nvars = numVars - 1;
+    nvars = NVARS - 1;
     err = nc_inq(ncid, &ndims, &nvars, 0, 0);
     IF (err)
 	error("nc_inq for two items failed: %s", nc_strerror(err));
     else IF (ndims != NDIMS)
 	error("nc_inq subset: wrong number of dimensions returned, %d", ndims);
-    else IF (nvars != numVars)
+    else IF (nvars != NVARS)
 	error("nc_inq subset: wrong number of variables returned, %d", nvars);
 
     {		/* tests using netCDF scratch file */
 	int ncid2;		/* for scratch netCDF dataset */
 
-#ifdef TEST_PNETCDF
-        err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid2);
-#else
         err = nc_create(scratch, NC_NOCLOBBER, &ncid2);
-#endif
         IF (err) {
             error("nc_create: %s", nc_strerror(err));
 	} else {		/* add dim, var, gatt, check inq */
@@ -388,17 +347,13 @@ test_nc_inq_natts(void)
     err = nc_inq_natts(BAD_ID, &ngatts);
     IF (err != NC_EBADID)
 	error("bad ncid: status = %d", err);
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     err = nc_inq_natts(ncid, &ngatts);
     IF (err)
 	error("nc_inq_natts: %s", nc_strerror(err));
-    else IF (ngatts != numGatts)
+    else IF (ngatts != NGATTS)
 	error("nc_inq_natts: wrong number of global atts returned, %d", ngatts);
     err = nc_close(ncid);
     IF (err)
@@ -416,11 +371,7 @@ test_nc_inq_ndims(void)
     err = nc_inq_ndims(BAD_ID, &ndims);
     IF (err != NC_EBADID)
 	error("bad ncid: status = %d", err);
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     err = nc_inq_ndims(ncid, &ndims);
@@ -444,17 +395,13 @@ test_nc_inq_nvars(void)
     err = nc_inq_nvars(BAD_ID, &nvars);
     IF (err != NC_EBADID)
 	error("bad ncid: status = %d", err);
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     err = nc_inq_nvars(ncid, &nvars);
     IF (err)
 	error("nc_inq_nvars: %s", nc_strerror(err));
-    else IF (nvars != numVars)
+    else IF (nvars != NVARS)
 	error("nc_inq_nvars: wrong number returned, %d", nvars);
     err = nc_close(ncid);
     IF (err)
@@ -472,11 +419,7 @@ test_nc_inq_unlimdim(void)
     err = nc_inq_unlimdim(BAD_ID, &unlimdim);
     IF (err != NC_EBADID)
 	error("bad ncid: status = %d", err);
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     err = nc_inq_unlimdim(ncid, &unlimdim);
@@ -498,11 +441,7 @@ test_nc_inq_dimid(void)
     int i;
     int err;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     err = nc_inq_dimid(ncid, "noSuch", &dimid);
@@ -533,11 +472,7 @@ test_nc_inq_dim(void)
     char name[NC_MAX_NAME];
     size_t length;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     for (i = 0; i < NDIMS; i++) {
@@ -582,11 +517,7 @@ test_nc_inq_dimlen(void)
     int err;
     size_t length;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     for (i = 0; i < NDIMS; i++) {
@@ -616,11 +547,7 @@ test_nc_inq_dimname(void)
     int err;
     char name[NC_MAX_NAME];
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
     for (i = 0; i < NDIMS; i++) {
@@ -650,11 +577,7 @@ test_nc_inq_varid(void)
     int i;
     int err;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
 
@@ -662,7 +585,7 @@ test_nc_inq_varid(void)
     IF (err != NC_ENOTVAR)
 	error("bad ncid: status = %d", err);
 
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	err = nc_inq_varid(BAD_ID, var_name[i], &varid);
         IF (err != NC_EBADID)
 	    error("bad ncid: status = %d", err);
@@ -691,14 +614,10 @@ test_nc_inq_var(void)
     int dimids[MAX_RANK];
     int natts;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	err = nc_inq_var(BAD_ID, i, name, &datatype, &ndims, dimids, &natts);
         IF (err != NC_EBADID)
 	    error("bad ncid: status = %d", err);
@@ -761,14 +680,10 @@ test_nc_inq_vardimid(void)
     int err;
     int dimids[MAX_RANK];
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	err = nc_inq_vardimid(BAD_ID, i, dimids);
         IF (err != NC_EBADID)
 	    error("bad ncid: status = %d", err);
@@ -795,14 +710,10 @@ test_nc_inq_varname(void)
     int err;
     char name[NC_MAX_NAME];
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	err = nc_inq_varname(BAD_ID, i, name);
         IF (err != NC_EBADID)
 	    error("bad ncid: status = %d", err);
@@ -829,14 +740,10 @@ test_nc_inq_varnatts(void)
     int err;
     int natts;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	err = nc_inq_varnatts(BAD_ID, i, &natts);
         IF (err != NC_EBADID)
 	    error("bad ncid: status = %d", err);
@@ -863,14 +770,10 @@ test_nc_inq_varndims(void)
     int err;
     int ndims;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	err = nc_inq_varndims(BAD_ID, i, &ndims);
         IF (err != NC_EBADID)
 	    error("bad ncid: status = %d", err);
@@ -897,14 +800,10 @@ test_nc_inq_vartype(void)
     int err;
     nc_type datatype;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	err = nc_inq_vartype(BAD_ID, i, &datatype);
         IF (err != NC_EBADID)
 	    error("bad ncid: status = %d", err);
@@ -939,14 +838,10 @@ test_nc_get_var1(void)
     double buf[1];		/* (void *) buffer */
     double value;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	for (j = 0; j < var_rank[i]; j++)
 	    index[j] = 0;
         err = nc_get_var1(BAD_ID, i, index, buf);
@@ -1018,14 +913,10 @@ test_nc_get_vara(void)
     double expect;
     double got;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         assert(var_rank[i] <= MAX_RANK);
         assert(var_nels[i] <= MAX_NELS);
         for (j = 0; j < var_rank[i]; j++) {
@@ -1149,14 +1040,10 @@ test_nc_get_vars(void)
     double expect;
     double got;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         assert(var_rank[i] <= MAX_RANK);
         assert(var_nels[i] <= MAX_NELS);
         for (j = 0; j < var_rank[i]; j++) {
@@ -1320,14 +1207,10 @@ test_nc_get_varm(void)
     double expect;
     double got;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
 	error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         assert(var_rank[i] <= MAX_RANK);
         assert(var_nels[i] <= MAX_NELS);
         for (j = 0; j < var_rank[i]; j++) {
@@ -1464,15 +1347,11 @@ test_nc_get_att(void)
     double got;
     int nok = 0;      /* count of valid comparisons */
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err) 
 	error("nc_open: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
         for (j = 0; j < NATTS(i); j++) {
 	    err = nc_get_att(BAD_ID, i, ATT_NAME(i,j), buf);
 	    IF (err != NC_EBADID) 
@@ -1533,15 +1412,11 @@ test_nc_inq_att(void)
     nc_type t;
     size_t n;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err) 
 	error("nc_open: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
         for (j = 0; j < NATTS(i); j++) {
 	    err = nc_inq_att(BAD_ID, i, ATT_NAME(i,j), &t, &n);
 	    IF (err != NC_EBADID) 
@@ -1579,15 +1454,11 @@ test_nc_inq_attlen(void)
     int err;
     size_t len;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	err = nc_inq_attlen(ncid, i, "noSuch", &len);
 	IF (err != NC_ENOTATT)
 	    error("Bad attribute name: status = %d", err);
@@ -1623,15 +1494,11 @@ test_nc_inq_atttype(void)
     int err;
     nc_type datatype;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	err = nc_inq_atttype(ncid, i, "noSuch", &datatype);
 	IF (err != NC_ENOTATT)
 	    error("Bad attribute name: status = %d", err);
@@ -1667,15 +1534,11 @@ test_nc_inq_attname(void)
     int err;
     char name[NC_MAX_NAME];
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	err = nc_inq_attname(ncid, i, BAD_ATTNUM, name);
 	IF (err != NC_ENOTATT)
 	    error("Bad attribute number: status = %d", err);
@@ -1714,15 +1577,11 @@ test_nc_inq_attid(void)
     int err;
     int attnum;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	err = nc_inq_attid(ncid, i, "noSuch", &attnum);
 	IF (err != NC_ENOTATT)
 	    error("Bad attribute name: status = %d", err);

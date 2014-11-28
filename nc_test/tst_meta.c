@@ -9,7 +9,6 @@
 
 */
 
-#include <stdio.h> /* printf() */
 #include <config.h>
 #include <netcdf.h>
 #include <netcdf_meta.h>

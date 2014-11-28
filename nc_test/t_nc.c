@@ -9,7 +9,7 @@
    Based on a program to test the nasa look-alike program, so not the
    most appropropriate test. See ../nctest for a complete spec test.
  
-   $Id: t_nc.c 2792 2014-10-27 06:02:59Z wkliao $ */
+   $Id: t_nc.c,v 1.94 2010/05/27 21:34:13 dmh Exp $ */
 
 #define REDEF
 /* #define SYNCDEBUG */
@@ -22,9 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <mpi.h>
 #include <netcdf.h>
-#include <netcdf_par.h>
 
 #define MAXSHORT	32767
 #define MAXINT		2147483647
@@ -316,7 +314,7 @@ bad_ret :
 	return;
 }
 
-static size_t	indices[][3] = {
+static const size_t	indices[][3] = {
 	{0, 1, 3},
 	{0, 3, 0},
 	{1, 2, 3},
@@ -331,19 +329,19 @@ static const size_t s_start[] = {0,1};
 static const size_t s_edges[] = {NUM_RECS, SIZE_1 - 1};
 static char sentence[NUM_RECS* SIZE_1 -1] =
 	"The red death had long devastated the country.";
-static short shs[] = {97, 99};
-static int birthday = 82555;
+static const short shs[] = {97, 99};
+static const int birthday = 82555;
 #define M_E	2.7182818284590452354
-static float e = (float) M_E;
-static double pinot = 3.25;
-static double zed = 0.0;
+static const float e = (float) M_E;
+static const double pinot = 3.25;
+static const double zed = 0.0;
 
 
 /*ARGSUSED*/
 int
-main(int argc, char *argv[])
+main(int ac, char *av[])
 {
-	int cmode=NC_CLOBBER, omode, ret;
+	int ret;
 	int	 id;
 	char buf[256];
 #ifdef SYNCDEBUG
@@ -357,24 +355,13 @@ main(int argc, char *argv[])
 	size_t chunksz = 8192;
 	size_t align = 8192/32;
 
-#ifdef TEST_PNETCDF
-	MPI_Init(&argc, &argv);
-
-        // cmode |= NC_PNETCDF |NC_64BIT_OFFSET;
-        cmode |= NC_PNETCDF |NC_64BIT_DATA;
-	ret = nc_create_par(fname,cmode, MPI_COMM_WORLD, MPI_INFO_NULL, &id);
-#else
-nc_set_default_format(NC_FORMAT_CDF5, NULL);
-	ret = nc__create(fname,cmode, initialsz, &chunksz, &id);
+	ret = nc__create(fname,NC_NOCLOBBER, initialsz, &chunksz, &id);
 	if(ret != NC_NOERR) {
  		/* (void) fprintf(stderr, "trying again\n"); */
-		ret = nc__create(fname,cmode, initialsz, &chunksz, &id);
+		ret = nc__create(fname,NC_CLOBBER, initialsz, &chunksz, &id);
 	}
-#endif
-	if(ret != NC_NOERR)  {
-		fprintf(stderr,"Error %s in file %s at line %d\n",nc_strerror(ret),__FILE__,__LINE__);
+	if(ret != NC_NOERR) 
 		exit(ret);
-        }
 	
 	assert( nc_put_att_text(id, NC_GLOBAL,
 		"TITLE", 12, "another name") == NC_NOERR);
@@ -472,13 +459,7 @@ nc_set_default_format(NC_FORMAT_CDF5, NULL);
 /*
  *	read it
  */
-        omode = NC_NOWRITE;
-#ifdef TEST_PNETCDF
-        omode |= NC_PNETCDF;
-	ret = nc_open_par(fname,omode, MPI_COMM_WORLD, MPI_INFO_NULL, &id);
-#else
-	ret = nc__open(fname,omode, &chunksz, &id);
-#endif
+	ret = nc__open(fname,NC_NOWRITE, &chunksz, &id);
 	if(ret != NC_NOERR)
 	{
    	    (void) printf("Could not open %s: %s\n", fname,
@@ -671,8 +652,5 @@ nc_set_default_format(NC_FORMAT_CDF5, NULL);
 	ret = nc_close(id);
 	/* (void) printf("re nc_close ret = %d\n", ret); */
 
-#ifdef TEST_PNETCDF
-	MPI_Finalize();
-#endif
 	return 0;
 }

@@ -1,7 +1,7 @@
 /*********************************************************************
  *   Copyright 1996, UCAR/Unidata
  *   See netcdf/COPYRIGHT file for copying and redistribution conditions.
- *   $Id: test_write.c 2796 2014-10-28 03:40:29Z wkliao $
+ *   $Id: test_write.c,v 1.33 2006/10/31 16:23:13 ed Exp $
  *********************************************************************/
 
 #include "tests.h"
@@ -28,22 +28,13 @@ test_nc_create(void)
     int recdim;                 /* id of unlimited dimension */
 
     for (clobber = 0; clobber < 2; clobber++) {
-        int cmode = clobber ? NC_CLOBBER : NC_NOCLOBBER;
-#ifdef TEST_PNETCDF
-        err = nc_create_par(scratch, cmode|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
-	err = nc_create(scratch, cmode, &ncid);
-#endif
+	err = nc_create(scratch, clobber ? NC_CLOBBER : NC_NOCLOBBER, &ncid);
 	IF (err)
 	    error("nc_create: %s", nc_strerror(err));
 	err = nc_close(ncid);
 	IF (err)
 	    error("nc_close: %s", nc_strerror(err));
-#ifdef TEST_PNETCDF
-        err = nc_open_par(scratch, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
 	err = nc_open(scratch, NC_NOWRITE, &ncid);
-#endif
 	IF (err)
 	    error("nc_open: %s", nc_strerror(err));
 	err = nc_inq(ncid, &ndims, &nvars, &ngatts, &recdim);
@@ -62,11 +53,7 @@ test_nc_create(void)
 	    error("nc_close: %s", nc_strerror(err));
     }
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err != NC_EEXIST)
 	error("attempt to overwrite file: status = %d", err);
     err = remove(scratch);
@@ -119,11 +106,7 @@ test_nc_redef(void)
 	error("bad ncid: status = %d", err);
 
 	/* read-only tests */
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
     err = nc_redef(ncid);
@@ -137,11 +120,7 @@ test_nc_redef(void)
 	error("nc_close: %s", nc_strerror(err));
 
 	/* tests using scratch file */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc__create(scratch, NC_NOCLOBBER, 0, &sizehint, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -216,11 +195,7 @@ test_nc_redef(void)
     /* check scratch file written as expected */
     check_file(scratch);  /* checks all except "abc" stuff added above */
 
-#ifdef TEST_PNETCDF
-    IF ((err = nc_open_par(scratch, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)))
-#else
     IF ((err = nc_open(scratch, NC_NOWRITE, &ncid)))
-#endif
         error("nc_open: %s", nc_strerror(err));
     IF ((err = nc_inq_dim(ncid, dimid, name, &length))) 
 	error("nc_inq_dim: %s", nc_strerror(err));
@@ -236,11 +211,7 @@ test_nc_redef(void)
         error("nc_close: %s", nc_strerror(err));
 
     /* open scratch file for writing, add another dim, var, att, then check */
-#ifdef TEST_PNETCDF
-    IF ((err = nc_open_par(scratch, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)))
-#else
     IF ((err = nc_open(scratch, NC_WRITE, &ncid)))
-#endif
         error("nc_open: %s", nc_strerror(err));
     IF ((err = nc_redef(ncid)))
         error("nc_redef: %s", nc_strerror(err));
@@ -263,11 +234,7 @@ test_nc_redef(void)
     /* check scratch file written as expected */
     check_file(scratch);
 
-#ifdef TEST_PNETCDF
-        err = nc_open_par(scratch, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
-        err = nc_open(scratch, NC_NOWRITE, &ncid);
-#endif
+    err = nc_open(scratch, NC_NOWRITE, &ncid);
     IF (err)
         error("nc_open: %s", nc_strerror(err));
     err = nc_inq_dim(ncid, dimid, name, &length);
@@ -327,11 +294,7 @@ test_nc_sync(void)
         error("bad ncid: status = %d", err);
 
         /* create scratch file & try nc_sync in define mode */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncidw);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncidw);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
 	return;
@@ -353,11 +316,7 @@ test_nc_sync(void)
         error("nc_sync of ncidw failed: %s", nc_strerror(err));
 
         /* open another handle, nc_sync, read (check) */
-#ifdef TEST_PNETCDF
-        err = nc_open_par(scratch, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncidr);
-#else
-        err = nc_open(scratch, NC_NOWRITE, &ncidr);
-#endif
+    err = nc_open(scratch, NC_NOWRITE, &ncidr);
     IF (err)
         error("nc_open: %s", nc_strerror(err));
     err = nc_sync(ncidr);
@@ -403,11 +362,7 @@ test_nc_abort(void)
         error("bad ncid: status = %d", err);
 
         /* create scratch file & try nc_abort in define mode */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -431,11 +386,7 @@ test_nc_abort(void)
 	 * define new dims, vars, atts
 	 * try nc_abort: should restore previous state (no dims, vars, atts)
 	 */ 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -455,11 +406,7 @@ test_nc_abort(void)
     err = nc_close(ncid);	/* should already be closed */
     IF (err != NC_EBADID)
         error("bad ncid: status = %d", err);
-#ifdef TEST_PNETCDF
-        err = nc_open_par(scratch, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
-        err = nc_open(scratch, NC_NOWRITE, &ncid);
-#endif
+    err = nc_open(scratch, NC_NOWRITE, &ncid);
     IF (err)
         error("nc_open: %s", nc_strerror(err));
     err = nc_inq (ncid, &ndims, &nvars, &ngatts, NULL);
@@ -476,11 +423,7 @@ test_nc_abort(void)
         error("nc_close: %s", nc_strerror(err));
 
         /* try nc_abort in data mode - should just close */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_CLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -530,11 +473,7 @@ test_nc_def_dim(void)
         error("bad ncid: status = %d", err);
 
         /* data mode test */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_CLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -628,11 +567,7 @@ test_nc_rename_dim(void)
         error("bad ncid: status = %d", err);
 
         /* main tests */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -694,11 +629,7 @@ test_nc_def_var(void)
         error("bad ncid: status = %d", err);
 
         /* scalar tests */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -741,17 +672,13 @@ test_nc_def_var(void)
         error("remove of %s failed", scratch);
 
         /* general tests using global vars */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_CLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
     }
     def_dims(ncid);
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         err = nc_def_var(ncid, var_name[i], var_type[i], var_rank[i],
             var_dimid[i], &varid);
         IF (err) 
@@ -789,11 +716,7 @@ test_nc_put_var1(void)
     double value;
     double buf[1];		/* (void *) buffer */
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -804,7 +727,7 @@ test_nc_put_var1(void)
     IF (err)
         error("nc_enddef: %s", nc_strerror(err));
 
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         for (j = 0; j < var_rank[i]; j++)
             index[j] = 0;
         err = nc_put_var1(BAD_ID, i, index, buf);
@@ -878,11 +801,7 @@ test_nc_put_vara(void)
     char *p;			/* (void *) pointer */
     double value;
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -893,7 +812,7 @@ test_nc_put_vara(void)
     IF (err)
         error("nc_enddef: %s", nc_strerror(err));
 
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         assert(var_rank[i] <= MAX_RANK);
         assert(var_nels[i] <= MAX_NELS);
         for (j = 0; j < var_rank[i]; j++) {
@@ -1009,11 +928,7 @@ test_nc_put_vars(void)
     char *p;			/* (void *) pointer */
     double value;
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -1024,7 +939,7 @@ test_nc_put_vars(void)
     IF (err)
         error("nc_enddef: %s", nc_strerror(err));
 
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         assert(var_rank[i] <= MAX_RANK);
         assert(var_nels[i] <= MAX_NELS);
         for (j = 0; j < var_rank[i]; j++) {
@@ -1168,11 +1083,7 @@ test_nc_put_varm(void)
     char *p;			/* (void *) pointer */
     double value;
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -1183,7 +1094,7 @@ test_nc_put_varm(void)
     IF (err)
         error("nc_enddef: %s", nc_strerror(err));
 
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         assert(var_rank[i] <= MAX_RANK);
         assert(var_nels[i] <= MAX_NELS);
         for (j = 0; j < var_rank[i]; j++) {
@@ -1318,11 +1229,7 @@ test_nc_rename_var(void)
     int i;
     char name[NC_MAX_NAME];
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -1334,11 +1241,11 @@ test_nc_rename_var(void)
     def_vars(ncid);
 
 	/* Prefix "new_" to each name */
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
         err = nc_rename_var(BAD_ID, i, "newName");
         IF (err != NC_EBADID)
             error("bad ncid: status = %d", err);
-        err = nc_rename_var(ncid, i, var_name[numVars-1]);
+        err = nc_rename_var(ncid, i, var_name[NVARS-1]);
         IF (err != NC_ENAMEINUSE)
             error("duplicate name: status = %d", err);
 	(void) strcpy(name, "new_");
@@ -1358,7 +1265,7 @@ test_nc_rename_var(void)
     err = nc_enddef(ncid);
     IF (err)
         error("nc_enddef: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	(void) strcpy(name, "even_longer_");
 	(void) strcat(name, var_name[i]);
         err = nc_rename_var(ncid, i, name);
@@ -1403,11 +1310,7 @@ test_nc_put_att(void)
     size_t length;		/* of att */
     double value;
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -1415,7 +1318,7 @@ test_nc_put_att(void)
     def_dims(ncid);
     def_vars(ncid);
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	varid = VARID(i);
         for (j = 0; j < NATTS(i); j++) {
 	    name = ATT_NAME(i,j);
@@ -1487,18 +1390,10 @@ test_nc_copy_att(void)
     size_t length;              /* of att */
     char  value;
 
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid_in);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid_in);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid_out);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid_out);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -1506,7 +1401,7 @@ test_nc_copy_att(void)
     def_dims(ncid_out);
     def_vars(ncid_out);
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
         varid = VARID(i);
         for (j = 0; j < NATTS(i); j++) {
             name = ATT_NAME(i,j);
@@ -1542,11 +1437,7 @@ test_nc_copy_att(void)
     err = nc_close(ncid_out);
     IF (err)
         error("nc_close: %s", nc_strerror(err));
-#ifdef TEST_PNETCDF
-    err = nc_open_par(scratch, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid_out);
-#else
     err = nc_open(scratch, NC_WRITE, &ncid_out);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
     check_atts(ncid_out);
@@ -1573,7 +1464,7 @@ test_nc_copy_att(void)
     err = nc_enddef(ncid_out);
     IF (err)
         error("nc_enddef: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	if (NATTS(i) > 0 && ATT_LEN(i,j) > 0) {
 	    err = nc_rename_att(ncid_out, i, att_name[i][0], "a");
 	    IF (err)
@@ -1588,14 +1479,10 @@ test_nc_copy_att(void)
         error("nc_close: %s", nc_strerror(err));
 
 	/* Reopen & check */
-#ifdef TEST_PNETCDF
-    err = nc_open_par(scratch, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid_out);
-#else
     err = nc_open(scratch, NC_WRITE, &ncid_out);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	if (NATTS(i) > 0 && ATT_LEN(i,j) > 0) {
 	    err = nc_inq_att(ncid_out, i, "a", &datatype, &length);
 	    IF (err)
@@ -1653,11 +1540,7 @@ test_nc_rename_att(void)
     double value[MAX_NELS];
     double expect;
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -1669,7 +1552,7 @@ test_nc_rename_att(void)
     def_vars(ncid);
     put_atts(ncid);
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
         varid = VARID(i);
         for (j = 0; j < NATTS(i); j++) {
 	    attname = ATT_NAME(i,j);
@@ -1696,15 +1579,11 @@ test_nc_rename_att(void)
     err = nc_close(ncid);
     IF (err)
         error("nc_close: %s", nc_strerror(err));
-#ifdef TEST_PNETCDF
-    err = nc_open_par(scratch, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(scratch, NC_WRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
         varid = VARID(i);
         for (j = 0; j < NATTS(i); j++) {
 	    attname = ATT_NAME(i,j);
@@ -1758,7 +1637,7 @@ test_nc_rename_att(void)
 	/* Now in data mode */
 	/* Try making names even longer. Then restore original names */
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
         varid = VARID(i);
         for (j = 0; j < NATTS(i); j++) {
 	    attname = ATT_NAME(i,j);
@@ -1811,11 +1690,7 @@ test_nc_del_att(void)
     int varid;
     char *name;                 /* of att */
 
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -1827,7 +1702,7 @@ test_nc_del_att(void)
     def_vars(ncid);
     put_atts(ncid);
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	varid = VARID(i);
 	numatts = NATTS(i);
         for (j = 0; j < numatts; j++) {
@@ -1863,11 +1738,7 @@ test_nc_del_att(void)
     err = nc_close(ncid);
     IF (err)
         error("nc_close: %s", nc_strerror(err));
-#ifdef TEST_PNETCDF
-    err = nc_open_par(scratch, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(scratch, NC_WRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
     err = nc_inq_natts(ncid, &natts);
@@ -1875,7 +1746,7 @@ test_nc_del_att(void)
 	error("nc_inq_natts: %s", nc_strerror(err));
     IF (natts != 0)
 	error("natts: expected %d, got %d", 0, natts);
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	varid = VARID(i);
 	err = nc_inq_varnatts(ncid, varid, &natts);
 	IF (err)
@@ -1893,7 +1764,7 @@ test_nc_del_att(void)
     IF (err)
         error("nc_enddef: %s", nc_strerror(err));
 
-    for (i = -1; i < numVars; i++) {
+    for (i = -1; i < NVARS; i++) {
 	varid = VARID(i);
 	numatts = NATTS(i);
         for (j = 0; j < numatts; j++) {
@@ -1944,11 +1815,7 @@ test_nc_set_fill(void)
 	error("bad ncid: status = %d", err);
 
 	/* try in read-only mode */
-#ifdef TEST_PNETCDF
-    err = nc_open_par(testfile, NC_NOWRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_open(testfile, NC_NOWRITE, &ncid);
-#endif
     IF (err)
         error("nc_open: %s", nc_strerror(err));
     err = nc_set_fill(ncid, NC_NOFILL, &old_fillmode);
@@ -1959,11 +1826,7 @@ test_nc_set_fill(void)
         error("nc_close: %s", nc_strerror(err));
 
 	/* create scratch */
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_NOCLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_NOCLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -2011,7 +1874,7 @@ test_nc_set_fill(void)
         error("nc_put_var1_text: %s", nc_strerror(err));
 
 	/* get all variables & check all values equal default fill */
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	switch (var_type[i]) {
 	    case NC_CHAR:   fill = NC_FILL_CHAR; break;
 	    case NC_BYTE:   fill = NC_FILL_BYTE; break;
@@ -2047,11 +1910,7 @@ test_nc_set_fill(void)
     err = nc_close(ncid);
     IF (err)
         error("nc_close: %s", nc_strerror(err));
-#ifdef TEST_PNETCDF
-    err = nc_create_par(scratch, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
     err = nc_create(scratch, NC_CLOBBER, &ncid);
-#endif
     IF (err) {
         error("nc_create: %s", nc_strerror(err));
         return;
@@ -2061,7 +1920,7 @@ test_nc_set_fill(void)
 
 	/* set _FillValue = 42 for all vars */
     text = fill = 42;
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	if (var_type[i] == NC_CHAR) {
 	    err = nc_put_att_text(ncid, i, "_FillValue", 1, &text);
 	    IF (err)
@@ -2083,7 +1942,7 @@ test_nc_set_fill(void)
         error("nc_put_var1_text: %s", nc_strerror(err));
 
 	/* get all variables & check all values equal 42 */
-    for (i = 0; i < numVars; i++) {
+    for (i = 0; i < NVARS; i++) {
 	for (j = 0; j < var_nels[i]; j++) {
             err = toMixedBase(j, var_rank[i], var_shape[i], index);
             IF (err)
@@ -2115,8 +1974,7 @@ test_nc_set_fill(void)
 }
 
 /* This function gets the version of a netCDF file, 1 is for netCDF
-   classic, 2 for 64-bit offset format, (someday) 3 for HDF5 format,
-   5 for 64-bit data format (CDF-5).
+   classic, 2 for 64-bit offset format, (someday) 3 for HDF5 format.
 */
 #define MAGIC_NUM_LEN 4
 static
@@ -2140,8 +1998,7 @@ nc_get_file_version(char *path, int *version)
    if (strncmp(magic, "CDF", MAGIC_NUM_LEN-1)==0)
    {
       if (magic[MAGIC_NUM_LEN-1] == NC_FORMAT_CLASSIC || 
-	  magic[MAGIC_NUM_LEN-1] == NC_FORMAT_CDF2 ||
-	  magic[MAGIC_NUM_LEN-1] == NC_FORMAT_CDF5)
+	  magic[MAGIC_NUM_LEN-1] == NC_FORMAT_64BIT)
 	 *version = magic[MAGIC_NUM_LEN-1];
       else
 	 return NC_ENOTNC;
@@ -2177,22 +2034,16 @@ test_nc_set_default_format(void)
 	error("bad default format: status = %d", err);
 
     /* NULL old_formatp */
-    err = nc_set_default_format(NC_FORMAT_CDF2, NULL);
+    err = nc_set_default_format(NC_FORMAT_64BIT, NULL);
     IF (err)
 	error("null old_fortmatp: status = %d", err);
 
     /* Cycle through available formats. */
-    for(i=1; i<5; i++)
+    for(i=1; i<3; i++)
     {
-       if (i == 3 || i == 4) continue; /* test classic formats only */
-
        if ((err = nc_set_default_format(i, NULL)))
 	  error("setting classic format: status = %d", err);
-#ifdef TEST_PNETCDF
-       if ((err = nc_create_par(scratch, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)))
-#else
        if ((err=nc_create(scratch, NC_CLOBBER, &ncid)))
-#endif
 	  error("bad nc_create: status = %d", err);
        if ((err=nc_put_att_text(ncid, NC_GLOBAL, "testatt", 
 				sizeof("blah"), "blah")))
@@ -2200,11 +2051,9 @@ test_nc_set_default_format(void)
        if ((err=nc_close(ncid)))
 	  error("bad close: status = %d", err);
        if ((err = nc_get_file_version(scratch, &version)))
-	  error("bad file version = %d", version);
-       if (version != i) {
-	  printf("expect version %d but got %d (file=%s)",i,version,scratch);
-	  error("bad file version = %d", version);
-	}
+	  error("bad file version = %d", err);
+       if (version != i)
+	  error("bad file version = %d", err);
     }
 
     /* Remove the left-over file. */

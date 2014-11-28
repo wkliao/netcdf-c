@@ -14,16 +14,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netcdf.h>
-#include <netcdf_par.h>
 
 #define FILE_NAME "tst_misc.nc"
 
 int
 main(int argc, char **argv) 
 {
-#ifdef TEST_PNETCDF
-   MPI_Init(&argc, &argv);
-#endif
    printf("\n*** Testing some extra stuff.\n");
    printf("*** Trying to open non-netCDF files of tiny length...");
    {
@@ -45,11 +41,7 @@ main(int argc, char **argv)
 	 if (fclose(file)) ERR;
 	 
 	 /* Make sure that netCDF rejects this file politely. */
-#ifdef TEST_PNETCDF
-         openstat = nc_open_par(FILE_NAME, NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid);
-#else
-         openstat = nc_open(FILE_NAME, 0, &ncid);
-#endif
+	 openstat = nc_open(FILE_NAME, 0, &ncid);
 	 /* Some platforms (OSX, buddy) return stat = 2 (file not found)
 	    for index i == 2.  Not sure why, but this is a work around. */
 	 if(openstat != NC_ENOTNC && openstat != 2) ERR;
@@ -58,8 +50,5 @@ main(int argc, char **argv)
    }
 
    SUMMARIZE_ERR;
-#ifdef TEST_PNETCDF
-   MPI_Finalize();
-#endif
    FINAL_RESULTS;
 }
