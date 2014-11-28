@@ -76,7 +76,7 @@ LIBSRC5 = libsrc5
 
 # Define Test directories
 if BUILD_TESTSETS
-TESTDIRS = $(V2_TEST) nc_test $(NC_TEST4) $(NCDAPTESTDIR)
+TESTDIRS = $(V2_TEST) nc_test nc5_test $(NC_TEST4) $(NCDAPTESTDIR)
 endif
 
 # This is the list of subdirs for which Makefiles will be constructed

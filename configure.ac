@@ -1120,6 +1120,7 @@ AC_CONFIG_FILES([Makefile
                  nctest/Makefile
                  nc_test4/Makefile
                  nc_test/Makefile
+                 nc5_test/Makefile
                  ncdump/Makefile
                  ncgen3/Makefile
                  ncgen/Makefile

@@ -29,6 +29,8 @@ netcdf-fortran
 libsrc5/nc5attr.c
 libsrc5/nc5ncx.c
 libsrc5/nc5putget.c
+nc5_test/test_get.c
+nc5_test/test_put.c
 Makefile.in
 aclocal.m4
 autom4te.cache/
