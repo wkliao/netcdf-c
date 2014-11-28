@@ -169,10 +169,10 @@ NC_check_file_type(const char *path, int use_parallel, void *mpi_info,
          else if(magic[3] == '\002')
             *version = 2; /* netcdf classic version 2 */
          else if(magic[3] == '\005')
-            *version = 5; /* netcdf classic version 5 */
+            *version = 5; /* pnetcdf file */
 	 else
 	    {status = NC_ENOTNC; goto done;}
-	 *model = (use_parallel || *version == 5) ? NC_DISPATCH_NC5 : NC_DISPATCH_NC3;
+	 *model = (use_parallel || *version == 5)?NC_DISPATCH_NC5:NC_DISPATCH_NC3;
      } else
         {status = NC_ENOTNC; goto done;}
 

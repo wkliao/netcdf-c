@@ -135,7 +135,7 @@ extern "C" {
 
 #define NC_CLASSIC_MODEL 0x0100 /**< Enforce classic model. Mode flag for nc_create(). */
 #define NC_64BIT_OFFSET  0x0200  /**< Use large (64-bit) file offsets. Mode flag for nc_create(). */
-#define NC_64BIT_DATA    0x0010  /**< CDF-5 format: classic model but 64 bit dimensions and sizes */
+#define NC_64BIT_DATA    0x0020  /**< CDF-5 format: classic model but 64 bit dimensions and sizes */
 
 /** \deprecated The following flag currently is ignored, but use in
  * nc_open() or nc_create() may someday support use of advisory
@@ -196,6 +196,7 @@ Use this in mode flags for both nc_create() and nc_open(). */
 #define NC_FORMAT_DAP2    (5)
 #define NC_FORMAT_DAP4    (6)
 #define NC_FORMAT_UNDEFINED (0)
+#define NC_FORMAT_NC5     (7)
 /**@}*/
 
 /** Let nc__create() or nc__open() figure out a suitable buffer size. */

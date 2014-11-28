@@ -248,6 +248,12 @@ kind_string_extended(int kind, int mode)
     static char text[1024];
     switch (kind) {
     case NC_FORMAT_NC3:
+	if(mode & NC_64BIT_OFFSET)
+	    snprintf(text,sizeof(text),"%s mode=%08x", "64-bit offset",mode);
+	else
+	    snprintf(text,sizeof(text),"%s mode=%08x", "classic",mode);
+	break;
+    case NC_FORMAT_NC5:
 	if(mode & NC_64BIT_DATA)
 	    snprintf(text,sizeof(text),"%s mode=%08x", "64-bit data",mode);
 	else if(mode & NC_64BIT_OFFSET)

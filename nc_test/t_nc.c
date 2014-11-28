@@ -474,9 +474,9 @@ nc_set_default_format(NC_FORMAT_CDF5, NULL);
  */
         omode = NC_NOWRITE;
 #ifdef TEST_PNETCDF
-        omode = NC_NOWRITE | NC_PNETCDF;
-#else
+        omode |= NC_PNETCDF;
 	ret = nc_open_par(fname,omode, MPI_COMM_WORLD, MPI_INFO_NULL, &id);
+#else
 	ret = nc__open(fname,omode, &chunksz, &id);
 #endif
 	if(ret != NC_NOERR)

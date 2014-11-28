@@ -2202,11 +2202,6 @@ test_nc_set_default_format(void)
        if ((err = nc_get_file_version(scratch, &version)))
 	  error("bad file version = %d", version);
        if (version != i) {
-          if (i == 4) {
-              if (version == 3) continue;
-	      printf("expect version 3 but got %d (file=%s)",version,scratch);
-              continue;
-          }
 	  printf("expect version %d but got %d (file=%s)",i,version,scratch);
 	  error("bad file version = %d", version);
 	}

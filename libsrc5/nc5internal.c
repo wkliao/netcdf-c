@@ -952,7 +952,7 @@ nc5_create_file(const char *path, int ioflags,
 		int use_parallel, void* parameters,
                 NC_Dispatch* dispatch, NC* nc)
 {
-	int status;
+	int status, default_format;
 	void *xp = NULL;
 	int sizeof_off_t = 0;
 	NC5_INFO* nc5;
@@ -980,29 +980,32 @@ nc5_create_file(const char *path, int ioflags,
 
 	assert(nc5->flags == 0);
 
-	/* Apply default create format. */
-	if (nc_get_default_format() == NC_FORMAT_CDF2)
-	  ioflags |= NC_64BIT_OFFSET;
-	else if (nc_get_default_format() == NC_FORMAT_CDF5)
-	  ioflags |= NC_64BIT_DATA;
+	if (!fIsSet(ioflags, NC_64BIT_DATA) && !fIsSet(ioflags, NC_64BIT_OFFSET)) {
+            /* if no format set in ioflag, apply default create format. */
+            default_format = nc_get_default_format();
+            if (default_format == NC_FORMAT_CDF2)
+              ioflags |= NC_64BIT_OFFSET;
+            else if (default_format == NC_FORMAT_CDF5)
+              ioflags |= NC_64BIT_DATA;
+        }
 
 	nc5->xsz = MIN_NC_XSZ;
-	if (fIsSet(ioflags, NC_64BIT_OFFSET)) {
-		fSet(nc5->flags, NC_64BIT_OFFSET);
-		sizeof_off_t = 8;
-	} else if (fIsSet(ioflags, NC_64BIT_DATA)) {
+	if (fIsSet(ioflags, NC_64BIT_DATA)) {
 		fSet(nc5->flags, NC_64BIT_DATA);
 		sizeof_off_t = 8;
 		nc5->xsz = MIN_NC5_XSZ; /* CDF-5 has minimum 16 extra bytes */
+	} else if (fIsSet(ioflags, NC_64BIT_OFFSET)) {
+		fSet(nc5->flags, NC_64BIT_OFFSET);
+		sizeof_off_t = 8;
 	} else {
 		sizeof_off_t = 4;
 	}
 
 	assert(nc5->xsz == nc5x_len_NC(nc5,sizeof_off_t));
 
-        status =  ncio_create(path, ioflags, initialsz,
-			      0, nc5->xsz, &nc5->chunk,
-			      &nc5->nciop, &xp);
+        status = ncio_create(path, ioflags, initialsz,
+			     0, nc5->xsz, &nc5->chunk,
+			     &nc5->nciop, &xp);
 	if(status != NC_NOERR)
 	{
 		/* translate error status */
@@ -1070,6 +1073,15 @@ NC5_create(const char *path, int cmode,
         if((cmode & (NC_64BIT_OFFSET|NC_64BIT_DATA)) == (NC_64BIT_OFFSET|NC_64BIT_DATA))
 	    return NC_EINVAL;
 
+	if (!fIsSet(cmode, NC_64BIT_DATA) && !fIsSet(cmode, NC_64BIT_OFFSET)) {
+            /* if no format set in ioflag, apply default create format. */
+            default_format = nc_get_default_format();
+            if (default_format == NC_FORMAT_CDF2)
+                cmode |= NC_64BIT_OFFSET;
+            else if (default_format == NC_FORMAT_CDF5)
+                cmode |= NC_64BIT_DATA;
+        }
+
         /* Create our specific NC5_INFO instance */
 	nc5 = new_NC5INFO(chunksizehintp);
         if(nc5 == NULL) return NC_ENOMEM;
@@ -1078,17 +1090,6 @@ NC5_create(const char *path, int cmode,
 
         /* Link nc5 and nc */
         NC5_DATA_SET(nc,nc5);
-
-        default_format = nc_get_default_format();
-        /* if (default_format == NC_FORMAT_CLASSIC) then we respect the format set in cmode */
-        if (default_format == NC_FORMAT_CDF2) {
-            if (! (cmode & NC_64BIT_OFFSET)) /* check if cmode has NC_64BIT_OFFSET already */
-                cmode |= NC_64BIT_OFFSET;
-        }
-        else if (default_format == NC_FORMAT_CDF5) {
-            if (! (cmode & NC_64BIT_DATA)) /* check if cmode has NC_64BIT_DATA already */
-                cmode |= NC_64BIT_DATA;
-        }
 
         /* PnetCDF recognizes the flags below for create and ignores NC_LOCK and
          * NC_SHARE */
@@ -1104,7 +1105,6 @@ NC5_create(const char *path, int cmode,
         return res;
     }
 #endif
-printf("%s line %d calling nc5_create_file\n",__FILE__,__LINE__);
     /* sequential program to create a file */
     return nc5_create_file(path, cmode, initialsz, basepe, chunksizehintp,
 			   use_parallel, mpidata, table, nc);
@@ -1687,8 +1687,7 @@ NC5_inq_format_extended(int ncid, int* formatp, int *modep)
     else
 #endif
     {
-/* TODO: create a new flag to tell CDF-5 from NC_FORMAT_PNETCDF */
-        if(formatp) *formatp = NC_FORMAT_PNETCDF; // NC_FORMAT_NC5;
+        if(formatp) *formatp = NC_FORMAT_NC5;
     }
     return NC_NOERR;
 }
