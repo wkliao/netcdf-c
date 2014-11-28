@@ -1,3 +1,9 @@
+/*********************************************************************
+ *   Copyright 1993, UCAR/Unidata
+ *   See netcdf/COPYRIGHT file for copying and redistribution conditions.
+ *   $Header: /upc/share/CVS/netcdf-3/libsrc4/NC5dispatch.c,v 1.5 2010/05/27 02:19:37 dmh Exp $
+ *********************************************************************/
+
 /* WARNING: Order of mpi.h, nc.h, and pnetcdf.h is important */
 #include "config.h"
 #include <stdlib.h>
