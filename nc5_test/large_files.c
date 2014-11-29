@@ -78,7 +78,7 @@ main(int argc, char **argv) {
     printf("*** Creating large file %s...", file_name);
 
    /* enter define mode */
-   stat = nc_create(file_name, NC_CLOBBER|NC_64BIT_OFFSET, &ncid);
+   stat = nc_create(file_name, NC_CLOBBER|NC_64BIT_DATA, &ncid);
    check_err(stat,__LINE__,__FILE__);
 
    /* define dimensions */

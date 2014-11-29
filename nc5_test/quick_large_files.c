@@ -65,8 +65,8 @@ main(int argc, char **argv)
 
 	/* Create a netCDF 64-bit offset format file. Write a value. */
 	sprintf(file_name, "%s/%s", TEMP_LARGE, FILE_NAME); 
-	printf("*** Creating %s for 64-bit offset large file test...", file_name);
-	if ((res = nc_create(file_name, cflag|NC_64BIT_OFFSET, &ncid)))
+	printf("*** Creating %s for 64-bit data large file test...", file_name);
+	if ((res = nc_create(file_name, cflag|NC_64BIT_DATA, &ncid)))
 	    ERR;
 
 	if ((res = nc_set_fill(ncid, NC_NOFILL, NULL)))
@@ -118,8 +118,8 @@ main(int argc, char **argv)
 	   classic format). Then some variations to check record var
 	   boundaries. 
 	*/
-	printf("*** Now a 64-bit offset, large file, fixed var test..."); 
-	if ((res = nc_create(file_name, cflag|NC_64BIT_OFFSET, &ncid)))
+	printf("*** Now a 64-bit data, large file, fixed var test..."); 
+	if ((res = nc_create(file_name, cflag|NC_64BIT_DATA, &ncid)))
 	    ERR;
 	if ((res = nc_set_fill(ncid, NC_NOFILL, NULL)))
 	    ERR;
@@ -219,8 +219,8 @@ main(int argc, char **argv)
 	printf("ok\n"); 
 
 	/* This will create some max sized 64-bit offset format fixed vars. */
-	printf("*** Now a 64-bit offset, simple fixed var create test..."); 
-	if ((res = nc_create(file_name, cflag|NC_64BIT_OFFSET, &ncid)))
+	printf("*** Now a 64-bit data, simple fixed var create test..."); 
+	if ((res = nc_create(file_name, cflag|NC_64BIT_DATA, &ncid)))
 	    ERR;
 	if ((res = nc_set_fill(ncid, NC_NOFILL, NULL)))
 	    ERR;
@@ -244,8 +244,8 @@ main(int argc, char **argv)
 
 	/* This will exceed the 64-bit offset format limits for one of the
 	   fixed vars. */
-	printf("*** Now a 64-bit offset, over-sized file that will fail..."); 
-	if ((res = nc_create(file_name, cflag|NC_64BIT_OFFSET, &ncid)))
+	printf("*** Now a 64-bit data, over-sized file that will fail..."); 
+	if ((res = nc_create(file_name, cflag|NC_64BIT_DATA, &ncid)))
 	    ERR;
 	if ((res = nc_set_fill(ncid, NC_NOFILL, NULL)))
 	    ERR;
@@ -267,8 +267,8 @@ main(int argc, char **argv)
 	/* Now let's see about record vars. First create a 64-bit offset
 	   file with three rec variables, each with the same numbers as
 	   defined above for the fixed var tests. This should all work. */
-	printf("*** Now a 64-bit offset, record var file..."); 
-	if ((res = nc_create(file_name, cflag|NC_64BIT_OFFSET, &ncid)))
+	printf("*** Now a 64-bit data, record var file..."); 
+	if ((res = nc_create(file_name, cflag|NC_64BIT_DATA, &ncid)))
 	    ERR;
 	if ((res = nc_set_fill(ncid, NC_NOFILL, NULL)))
 	    ERR;
@@ -486,8 +486,8 @@ main(int argc, char **argv)
 	   offset. This won't work either, because the cromwell var is so
 	   large. It exceeds the 4GiB - 4 byte per record limit for record
 	   vars. */
-	printf("*** Now a 64-bit offset file with too-large rec var that will fail..."); 
-	if ((res = nc_create(file_name, cflag|NC_64BIT_OFFSET, &ncid)))
+	printf("*** Now a 64-bit data file with too-large rec var that will fail..."); 
+	if ((res = nc_create(file_name, cflag|NC_64BIT_DATA, &ncid)))
 	    ERR;
 	if ((res = nc_set_fill(ncid, NC_NOFILL, NULL)))
 	    ERR;
@@ -520,8 +520,8 @@ main(int argc, char **argv)
 	printf("ok\n"); 
 
 	/* A 64-bit offset record file that just fits... */
-	printf("*** Now a 64 bit-offset file that just fits..."); 
-	if ((res = nc_create(file_name, cflag|NC_64BIT_OFFSET, &ncid)))
+	printf("*** Now a 64-bit data file that just fits..."); 
+	if ((res = nc_create(file_name, cflag|NC_64BIT_DATA, &ncid)))
 	    ERR;
 	if ((res = nc_set_fill(ncid, NC_NOFILL, NULL)))
 	    ERR;

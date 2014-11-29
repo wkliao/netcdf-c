@@ -359,13 +359,15 @@ main(int argc, char *argv[])
 
 #ifdef TEST_PNETCDF
 	MPI_Init(&argc, &argv);
+#endif
 
-        // cmode |= NC_PNETCDF |NC_64BIT_OFFSET;
-        cmode |= NC_PNETCDF |NC_64BIT_DATA;
+        nc_set_default_format(NC_FORMAT_CDF5, NULL);
+
+#ifdef TEST_PNETCDF
+        cmode |= NC_PNETCDF;
 	ret = nc_create_par(fname,cmode, MPI_COMM_WORLD, MPI_INFO_NULL, &id);
 #else
-nc_set_default_format(NC_FORMAT_CDF5, NULL);
-	ret = nc__create(fname,cmode, initialsz, &chunksz, &id);
+	ret = nc__create(fname, cmode, initialsz, &chunksz, &id);
 	if(ret != NC_NOERR) {
  		/* (void) fprintf(stderr, "trying again\n"); */
 		ret = nc__create(fname,cmode, initialsz, &chunksz, &id);

@@ -6,7 +6,6 @@
    Unicode names encoded with UTF-8. It is the NETCDF3 equivalent
    of tst_unicode.c
 
-   $Id: tst_atts.c 2792 2014-10-27 06:02:59Z wkliao $
 */
 
 #include <nc_tests.h>

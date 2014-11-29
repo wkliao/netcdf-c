@@ -100,6 +100,8 @@ main(int argc, char **argv)
        int ncid, varid;
       int data[TIME_LEN];
 
+      nc_set_default_format(NC_FORMAT_CDF5, NULL);
+
       if (create_file(FILE_NAME, NC_NOFILL)) ERR;
       if (nc_open(FILE_NAME, 0, &ncid)) ERR;
       if (nc_inq_varid(ncid, "time", &varid)) ERR;

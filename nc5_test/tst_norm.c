@@ -95,7 +95,7 @@ main(int argc, char **argv)
    char name_in[UNAMELEN + 1], strings_in[UNAMELEN + 1];
    nc_type att_type;
    size_t att_len;
-   int res;
+   int res, cmode;
    int dimid_in, varid_in, attnum_in;
    int attvals[] = {42};
 #define ATTNUM ((sizeof attvals)/(sizeof attvals[0]))
@@ -104,10 +104,11 @@ main(int argc, char **argv)
 MPI_Init(&argc, &argv);
 #endif
    printf("\n*** testing UTF-8 normalization...");
+   cmode = NC_CLOBBER | NC_64BIT_DATA;
 #ifdef TEST_PNETCDF
-   if((res = nc_create_par(FILE7_NAME, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL,&ncid)))
+   if((res = nc_create_par(FILE7_NAME, cmode | NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL,&ncid)))
 #else
-   if((res = nc_create(FILE7_NAME, NC_CLOBBER|NC_64BIT_DATA, &ncid)))
+   if((res = nc_create(FILE7_NAME, cmode, &ncid)))
 #endif
        ERR;
 

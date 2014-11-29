@@ -18,13 +18,7 @@
 
 #define FILE_NAME "tst_big_var6.nc"
 
-/* Test with both classic and 64-bit offset files. If netcdf-4 is
- * included, test with both netCDF-4 format variants also. */
-#ifdef USE_NETCDF4
-#define NUM_FORMATS (4)
-#else
-#define NUM_FORMATS (2)
-#endif
+#define NUM_FORMATS (5)
 
 #define NUMDIMS 4	      /* rank of variable in tests */
 #define DIM0 1
@@ -104,6 +98,11 @@ main(int argc, char **argv) {
     sprintf(testfile, "%s/%s", TEMP_LARGE, FILE_NAME);
     for (i = NC_FORMAT_CLASSIC; i <= NUM_FORMATS; i++)
     {
+/* Test with both classic, 64-bit offset, and 64-bit data files. If netcdf-4 is
+ * included, test with both netCDF-4 format variants also. */
+#ifndef USE_NETCDF4
+       if (i == NC_FORMAT_NETCDF4 || i == NC_FORMAT_NETCDF4_CLASSIC) continue;
+#endif
        printf("*** testing format %d file with short variable with > 2**32 values...", i);
        nc_set_default_format(i, NULL);
        if (test_big_var(testfile)) ERR_RET;

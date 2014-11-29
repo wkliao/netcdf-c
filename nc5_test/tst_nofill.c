@@ -381,6 +381,9 @@ main(int argc, char **argv)
 	    exit(EXIT_FAILURE);
 	}
     }
+
+    nc_set_default_format(NC_FORMAT_CDF5, NULL);
+
    printf("\n*** Testing nofill mode.\n");
    {
        printf("*** Create file in nofill mode, writing all values...");

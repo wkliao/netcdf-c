@@ -161,7 +161,7 @@ main(int argc, char **argv)
       int j;
 
       /* Create a file with some global atts. */
-nc_set_default_format(NC_FORMAT_CDF5, NULL);
+      nc_set_default_format(NC_FORMAT_CDF5, NULL);
 
 #ifdef TEST_PNETCDF
       if (nc_create_par(FILE_NAME, NC_CLOBBER|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL,&ncid)) ERR;

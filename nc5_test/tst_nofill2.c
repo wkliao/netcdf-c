@@ -90,6 +90,7 @@ main(int argc, char **argv)
       double data;
       int i;
 
+      nc_set_default_format(NC_FORMAT_CDF5, NULL);
       for (i = 0; i < NUM_TRIES; i++)
       {
 	printf(", trying sizehint of %lu ...", (unsigned long)sizehint);
