@@ -1717,11 +1717,11 @@ NC_open(const char *path, int cmode,
    if(model & NC_DISPATCH_NC4)
       cmode |= NC_NETCDF4;
    else if(model & NC_DISPATCH_NC3) {
-      cmode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
+      cmode &= ~NC_NETCDF4; /* must be netcdf-3 */
       if(version == 2) cmode |= NC_64BIT_OFFSET;
       else if(version == 5) cmode |= NC_64BIT_DATA;
    } else if(model & NC_DISPATCH_NC5) {
-      cmode &= ~NC_NETCDF4; /* must be netcdf-3 (CDF-1, CDF-2, CDF-5) */
+      cmode &= ~NC_NETCDF4; /* must be CDF-1, CDF-2 or CDF-5 */
       if(version == 2) cmode |= NC_64BIT_OFFSET;
       else if(version == 5) cmode |= NC_64BIT_DATA;
       if (useparallel) cmode |= NC_PNETCDF;
