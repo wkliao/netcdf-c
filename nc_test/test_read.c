@@ -58,14 +58,14 @@ test_nc_strerror(void)
     /* Try on a bad error status */
     /* Dmh: allow trailing extra info */
     message = nc_strerror(-666);/* should fail */
-    IF (strcmp(message, "Unknown Error") != 0)
+    IF (strncmp(message, "Unknown Error", strlen("Unknown Error")) != 0)
 	error("nc_strerror on bad error status returned: %s", message);
 
     /* Try on each legitimate error status */
     /* Dmh: allow trailing extra info */
     for (i=0; i<LEN_OF(ncerrs); i++) {
 	const char *message = nc_strerror(ncerrs[i].status);
-	IF (strcmp(message, ncerrs[i].msg) != 0)
+	IF (strncmp(message, ncerrs[i].msg, strlen(ncerrs[i].msg)) != 0)
 	    error("nc_strerror(%d) should return `%s', not `%s'",
 		  ncerrs[i].status, ncerrs[i].msg, message);
     }
