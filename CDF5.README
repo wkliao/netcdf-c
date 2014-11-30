@@ -1,0 +1,185 @@
+CDF-5 format is an extension of CDF-1 and CDF-2 file formats.  It adds supports
+for large array sizes (> 2GB array elements) and additional external data
+types: NC_USHORT, NC_UINT, NC_INT64, and NC_UINT64.  The nc5 dispatch will take
+effect when NC_PNETCDF and/or NC_64BIT_DATA flags are used to create a file.
+Note the nc5 dispatch will be built even if PnetCDF is diabled.
+
+Below gives a summary of all changes to the netCDF-4 original distribution.
+
+Root directory
+	.gitignore
+	# ignore C files that are automatically generated from m4
+
+	Makefile.am
+	# add directories of libsrc5 and nc5_test
+ 
+	configure.ac
+	# add nc5_test/Makefile
+
+Directory docs/
+	docs/guide.dox
+	# add note on CDF-5 format
+	# add note on ncgen3 for the new -v5 option
+ 
+Directory include/
+	include/nc5dispatch.h
+	# new nc5 dispatch header file
+
+	include/nc5internal.h
+	# new nc5 internal header file
+
+	include/ncdispatch.h
+	# update max data type to NC_UINT64 for non-netCDF4 formats
+	# enable nc5 dispatch no matter if PnetCDF is enabled or not
+ 
+	include/netcdf.h
+	# add new constant NC_64BIT_DATA
+	# add new constant NC_FORMAT_CDF5
+	# alias NC_FORMAT_64BIT to NC_FORMAT_CDF2
+
+Directory libdispatch/
+	libdispatch/dcopy.c
+	# add CDF-5 to file format checking
+ 
+	libdispatch/derror.c
+	# add a call to PnetCDF error strings
+
+	libdispatch/dfile.c
+	# add note on CDF-5 support
+	# update the max data type to NC_UINT64 for non-netCDF4 files
+	# set nc5 dispatch table for CDF-5 file format
+
+	libdispatch/dv2i.c
+	# fix bug on passing netCDF2 varm call to netCDF3 varm
+
+	libdispatch/dvarget.c
+	# fix bug on passing netCDF2 varm call to netCDF3 varm
+
+	libdispatch/dvarput.c
+	# fix bug on passing netCDF2 varm call to netCDF3 varm
+ 
+	libdispatch/nc.c
+	# add CDF-5 format for checking illegal file formats
+
+Directory liblib/
+	liblib/Makefile.am
+	# add netcdf5 library
+
+	liblib/stub.c
+	# add netcdf5 library
+ 
+Directory libsrc/
+	libsrc/mmapio.c
+	# add CDF-5 format checking
+
+	libsrc/nc3internal.c
+	# fix a compile warning
+
+Directory libsrc4/
+	libsrc4/nc4file.c
+	# add CDF-5 format checking
+
+Directory libsrc5/
+	libsrc5/Makefile.am
+	# add new source files for building nc5 dispatch
+ 
+	libsrc5/depend
+	# compile dependency
+
+	libsrc5/nc5attr.m4
+	# nc5 dispatch new file for attr APIs
+
+	libsrc5/nc5dim.c
+	# nc5 dispatch new file for dim APIs
+
+	libsrc5/nc5dispatch.c
+	# nc5 dispatch file
+
+	libsrc5/nc5internal.c
+	# nc5 dispatch new file internal implementation
+
+	libsrc5/nc5ncx.h
+	# nc5 dispatch new header file for external data types
+
+	libsrc5/nc5ncx.m4
+	# nc5 dispatch header file for get/put external data types
+
+	libsrc5/nc5putget.m4
+	# nc5 dispatch file for get/put APIs
+
+	libsrc5/nc5v1hpg.c
+	# nc5 dispatch file for reading/writing file header
+
+	libsrc5/nc5var.c
+	# nc5 dispatch file for var APIs
+
+Directory nc5_test/
+	nc5_test
+	# new directory for testing CDF-5 dispatch
+
+Directory nc_test/
+	nc_test/test_read.c
+	# fix nc_strerror testing for ignoring trailing substring
+	# fix bug for varm
+
+	nc_test/test_write.c
+	# fix bug for varm
+
+Directory nc_test4/
+	nc_test4/bm_file.c
+	# add file format checking for CDF-5
+
+	nc_test4/tst_converts.c
+	# add file format checking for CDF-5
+
+	nc_test4/tst_files.c
+	# add file format checking for CDF-5
+
+Directory ncdump/
+	ncdump/nccopy.c
+	# add support for CDF-5 file format
+	# add new command-line option (-k 5) for supporting CDF-5 file format
+
+	ncdump/ncdump.c
+	# add support for CDF-5 file format
+
+	ncdump/tst_64bit.sh
+	# add testings for CDF-5 file format
+
+	ncdump/tst_lengths.sh
+	# add testings for CDF-5 file format
+
+Directory ncgen/
+	ncgen/Makefile.am
+	# add a CDF-5 file, c5.cdl, for testing
+
+	ncgen/c5.cdl
+	# add a CDF-5 file, c5.cdl, for testing
+
+	ncgen/genc.c
+	# add support for CDF-5 file format
+
+	ncgen/genlib.h
+	# add support for CDF-5 file format
+
+	ncgen/main.c
+	# add support for CDF-5 file format
+	# add new command-line option (-k 5) for supporting CDF-5 file format
+ 
+	ncgen/ncgen.h
+	# add support for CDF-5 file format
+
+	ncgen/run_tests.sh
+	# add testing for CDF-5 file format
+
+	ncgen/semantics.c
+	# add support for CDF-5 file format
+
+Directory nctest/
+	nctest/driver.c
+	# add checking for CDF-5 file format
+
+Directory examples/
+	C/parallel_vara.c
+	# an example program that does parallel I/O on a CDF-1 file
+
