@@ -11,13 +11,16 @@ Root directory
 	# ignore C files that are automatically generated from m4
 
 	Makefile.am
+	# no. lines changed: 4
 	# add directories of libsrc5 and nc5_test
  
 	configure.ac
+	# no. lines changed: 1
 	# add nc5_test/Makefile
 
 Directory docs/
 	docs/guide.dox
+	# no. lines changed: 8
 	# add note on CDF-5 format
 	# add note on ncgen3 for the new -v5 option
  
@@ -29,22 +32,27 @@ Directory include/
 	# new nc5 internal header file
 
 	include/ncdispatch.h
+	# no. lines changed: 3
 	# update max data type to NC_UINT64 for non-netCDF4 formats
 	# enable nc5 dispatch no matter if PnetCDF is enabled or not
  
 	include/netcdf.h
+	# no. lines changed: 7
 	# add new constant NC_64BIT_DATA
 	# add new constant NC_FORMAT_CDF5
 	# alias NC_FORMAT_64BIT to NC_FORMAT_CDF2
 
 Directory libdispatch/
 	libdispatch/dcopy.c
+	# no. lines changed: 1
 	# add CDF-5 to file format checking
  
 	libdispatch/derror.c
+	# no. lines changed: 8
 	# add a call to PnetCDF error strings
 
 	libdispatch/dfile.c
+	# no. lines changed: 56
 	# add note on CDF-5 support
 	# update the max data type to NC_UINT64 for non-netCDF4 files
 	# set nc5 dispatch table for CDF-5 file format
@@ -59,24 +67,30 @@ Directory libdispatch/
 	# fix bug on passing netCDF2 varm call to netCDF3 varm
  
 	libdispatch/nc.c
+	# no. lines changed: 2
 	# add CDF-5 format for checking illegal file formats
 
 Directory liblib/
 	liblib/Makefile.am
+	# no. lines changed: 2
 	# add netcdf5 library
 
 	liblib/stub.c
+	# no. lines changed: 4
 	# add netcdf5 library
  
 Directory libsrc/
 	libsrc/mmapio.c
+	# no. lines changed: 1
 	# add CDF-5 format checking
 
 	libsrc/nc3internal.c
+	# no. lines changed: 1
 	# fix a compile warning
 
 Directory libsrc4/
 	libsrc4/nc4file.c
+	# no. lines changed: 5
 	# add CDF-5 format checking
 
 Directory libsrc5/
@@ -119,28 +133,35 @@ Directory nc5_test/
 
 Directory nc_test/
 	nc_test/test_read.c
+	# no. lines changed: 3
 	# fix nc_strerror testing for ignoring trailing substring
 	# fix bug for varm
 
 	nc_test/test_write.c
+	# no. lines changed: 1
 	# fix bug for varm
 
 Directory nc_test4/
 	nc_test4/bm_file.c
+	# no. lines changed: 4
 	# add file format checking for CDF-5
 
 	nc_test4/tst_converts.c
+	# no. lines changed: 3
 	# add file format checking for CDF-5
 
 	nc_test4/tst_files.c
+	# no. lines changed: 6
 	# add file format checking for CDF-5
 
 Directory ncdump/
 	ncdump/nccopy.c
+	# no. lines changed: 20
 	# add support for CDF-5 file format
 	# add new command-line option (-k 5) for supporting CDF-5 file format
 
 	ncdump/ncdump.c
+	# no. lines changed: 22
 	# add support for CDF-5 file format
 
 	ncdump/tst_64bit.sh
@@ -151,35 +172,42 @@ Directory ncdump/
 
 Directory ncgen/
 	ncgen/Makefile.am
+	# no. lines changed: 2
 	# add a CDF-5 file, c5.cdl, for testing
 
 	ncgen/c5.cdl
 	# add a CDF-5 file, c5.cdl, for testing
 
 	ncgen/genc.c
+	# no. lines changed: 3
 	# add support for CDF-5 file format
 
 	ncgen/genlib.h
+	# no. lines changed: 2
 	# add support for CDF-5 file format
 
 	ncgen/main.c
+	# no. lines changed: 12
 	# add support for CDF-5 file format
 	# add new command-line option (-k 5) for supporting CDF-5 file format
  
 	ncgen/ncgen.h
+	# no. lines changed: 1
 	# add support for CDF-5 file format
 
 	ncgen/run_tests.sh
 	# add testing for CDF-5 file format
 
 	ncgen/semantics.c
+	# no. lines changed: 7
 	# add support for CDF-5 file format
 
 Directory nctest/
 	nctest/driver.c
+	# no. lines changed: 2
 	# add checking for CDF-5 file format
 
 Directory examples/
 	C/parallel_vara.c
-	# an example program that does parallel I/O on a CDF-1 file
+	# add an example program that does parallel I/O on a CDF-1 file
 
