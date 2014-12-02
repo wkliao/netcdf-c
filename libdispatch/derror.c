@@ -259,7 +259,7 @@ const char *nc_strerror(int ncerr1)
 	 return "NetCDF: Error in using diskless access";
       default:
 #ifdef USE_PNETCDF
-	 return ncmpi_strerror(ncerr1);
+	 return ncmpi_strerror(ncerr1); /* PnetCDF error string */
 #else
 	 return "Unknown Error";
 #endif
