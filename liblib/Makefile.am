@@ -35,11 +35,9 @@ endif # BUILD_V2
 libnetcdf_la_LIBADD += ${top_builddir}/libdispatch/libdispatch.la	\
 			${top_builddir}/libsrc/libnetcdf3.la
 
-# + pnetcdf
-if USE_PNETCDF
+# Support CDF5
 AM_CPPFLAGS += -I${top_srcdir}/libsrc5
 libnetcdf_la_LIBADD += ${top_builddir}/libsrc5/libnetcdf5.la
-endif # USE_PNETCDF
 
 # + dap
 if USE_DAP

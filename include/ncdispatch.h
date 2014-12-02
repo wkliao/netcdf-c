@@ -117,10 +117,8 @@ extern NC_Dispatch* NCD2_dispatch_table;
 extern int NCD2_initialize(void);
 #endif
 
-#ifdef USE_PNETCDF
 extern NC_Dispatch* NC5_dispatch_table;
 extern int NC5_initialize(void);
-#endif
 
 #ifdef USE_NETCDF4
 

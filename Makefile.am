@@ -62,10 +62,8 @@ NCDAPTESTDIR = ncdap_test
 #endif # BUILD_UTILITIES
 endif
 
-# Build pnetcdf
-if USE_PNETCDF
+# Support CDF-5
 LIBSRC5 = libsrc5
-endif
 
 # Build UDUNITS?
 #if BUILD_UDUNITS

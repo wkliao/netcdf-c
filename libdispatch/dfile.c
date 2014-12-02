@@ -168,10 +168,8 @@ NC_check_file_type(const char *path, int use_parallel, void *mpi_info,
             *version = 1; /* netcdf classic version 1 */
          else if(magic[3] == '\002')
             *version = 2; /* netcdf classic version 2 */
-#ifdef USE_PNETCDF
          else if(magic[3] == '\005')
-            *version = 5; /* pnetcdf file */
-#endif
+            *version = 5; /* netcdf version 5 */
 	 else
 	    {status = NC_ENOTNC; goto done;}
 	 *model = (use_parallel || *version == 5)?NC_DISPATCH_NC5:NC_DISPATCH_NC3;
@@ -195,8 +193,8 @@ and attributes.
 
 \param cmode The creation mode flag. The following flags are
 available: NC_NOCLOBBER (do not overwrite existing file), NC_SHARE
-(limit write caching - netcdf classic files onlt), NC_64BIT_OFFSET
-(create 64-bit offset file), NC_NETCDF4 (create netCDF-4/HDF5 file),
+(limit write caching - netcdf classic files only), NC_64BIT_OFFSET
+(create 64-bit offset file), NC_64BIT_DATA (create CDF-5 file), NC_NETCDF4 (create netCDF-4/HDF5 file),
 NC_CLASSIC_MODEL (enforce netCDF classic mode on netCDF-4/HDF5
 files), NC_DISKLESS (store data only in memory), NC_MMAP (use MMAP
 for NC_DISKLESS), and NC_WRITE.
@@ -226,6 +224,8 @@ Setting NC_64BIT_OFFSET causes netCDF to create a 64-bit offset format
 file, instead of a netCDF classic format file. The 64-bit offset
 format imposes far fewer restrictions on very large (i.e. over 2 GB)
 data files. See Large File Support.
+
+Setting NC_64BIT_DATA causes netCDF to create a CDF-5 file format that large variables (over 2B array elements.). See Large File Support.
 
 A zero value (defined for convenience as NC_CLOBBER) specifies the
 default behavior: overwrite any existing dataset with the same file
@@ -1265,7 +1265,7 @@ This function returns the (rarely needed) format version.
 nc_create().
 
 \param formatp Pointer to location for returned format version, one of
-NC_FORMAT_CLASSIC, NC_FORMAT_64BIT, NC_FORMAT_NETCDF4,
+NC_FORMAT_CLASSIC, NC_FORMAT_CDF2, NC_FORMAT_CDF5, NC_FORMAT_NETCDF4,
 NC_FORMAT_NETCDF4_CLASSIC.
 
 \returns ::NC_NOERR No error.
@@ -1447,6 +1447,7 @@ int
 nc_inq_type(int ncid, nc_type xtype, char *name, size_t *size)
 {
    NC* ncp;
+
    /* For compatibility, we need to allow inq about
       atomic types, even if ncid is ill-defined */
    if(xtype <= ATOMICTYPEMAX) {
@@ -1543,6 +1544,9 @@ NC_create(const char *path, int cmode, size_t initialsz,
 	model = NC_DISPATCH_NC5;
       else
 #endif
+      if(cmode & NC_64BIT_DATA) /* CDF-5 format */
+	model = NC_DISPATCH_NC5;
+      else
       if(cmode & NC_CLASSIC_MODEL)
 	model = NC_DISPATCH_NC3;
    }
@@ -1561,7 +1565,11 @@ NC_create(const char *path, int cmode, size_t initialsz,
 	    model = NC_DISPATCH_NC4;
 	    break;
 #endif
-	 case NC_FORMAT_64BIT:
+	 case NC_FORMAT_CDF5:
+	    xcmode |= NC_64BIT_DATA;
+	    model = NC_DISPATCH_NC5;
+	    break;
+	 case NC_FORMAT_CDF2:
 	    xcmode |= NC_64BIT_OFFSET;
 	    /* fall thru */
 	 case NC_FORMAT_CLASSIC:
@@ -1598,11 +1606,9 @@ NC_create(const char *path, int cmode, size_t initialsz,
 	dispatcher = NCD2_dispatch_table;
       else
 #endif
-#ifdef USE_PNETCDF
       if(model == (NC_DISPATCH_NC5))
 	dispatcher = NC5_dispatch_table;
       else
-#endif
       if(model == (NC_DISPATCH_NC3))
  	dispatcher = NC3_dispatch_table;
       else
@@ -1717,19 +1723,19 @@ Not longer needed
       cmode &= ~NC_NETCDF4; /* must be netcdf-3 */
       if(version == 2) cmode |= NC_64BIT_OFFSET;
    } else if(model & NC_DISPATCH_NC5) {
-#if 0
-It appears that pnetcdf can read NC_64_BIT_OFFSET
-      cmode &= ~(NC_NETCDF4 | NC_64BIT_OFFSET); /* must be pnetcdf */ 
-#else
-      cmode &= ~(NC_NETCDF4);
-#endif
-      cmode |= NC_PNETCDF;
+      cmode &= ~NC_NETCDF4; /* must be CDF-1, CDF-2 or CDF-5 */
+      if(version == 2) cmode |= NC_64BIT_OFFSET;
+      else if(version == 5) cmode |= NC_64BIT_DATA;
+      if (useparallel) cmode |= NC_PNETCDF;
    }
 
    if((cmode & NC_MPIIO && cmode & NC_MPIPOSIX))
       return  NC_EINVAL;
 
-   /* override overrides any other table choice */
+   if((cmode & NC_64BIT_OFFSET && cmode & NC_64BIT_DATA))
+      return  NC_EINVAL; /* cannot have both CDF-2 and CDF-5 */
+
+   /* override any other table choice */
    dispatcher = NC_get_dispatch_override();
    if(dispatcher != NULL) goto havetable;
 
@@ -1744,11 +1750,9 @@ It appears that pnetcdf can read NC_64_BIT_OFFSET
 	dispatcher = NCD2_dispatch_table;
    else
 #endif
-#if  defined(USE_PNETCDF)
    if(model == (NC_DISPATCH_NC5))
 	dispatcher = NC5_dispatch_table;
    else
-#endif
 #if defined(USE_NETCDF4)
    if(model == (NC_DISPATCH_NC4))
 	dispatcher = NC4_dispatch_table;

@@ -22,9 +22,7 @@ extern int NCD2_initialize(void);
 extern int NCCR_initialize(void);
 #endif
 
-#ifdef USE_PNETCDF
 extern int NC5_initialize(void);
-#endif
 
 /**
 This procedure invokes all defined
@@ -50,9 +48,7 @@ NC_initialize(void)
     if((stat = NCD2_initialize())) return stat;
 #endif
 
-#ifdef USE_PNETCDF
     if((stat = NC5_initialize())) return stat;
-#endif
 
 #ifdef USE_NETCDF4
     if((stat = NC4_initialize())) return stat;

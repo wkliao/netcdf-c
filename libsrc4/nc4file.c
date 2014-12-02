@@ -471,7 +471,7 @@ NC4_create(const char* path, int cmode, size_t initialsz, int basepe,
    }
 
    /* Check the cmode for validity. */
-   if (cmode & ~(NC_NOCLOBBER | NC_64BIT_OFFSET
+   if (cmode & ~(NC_NOCLOBBER | NC_64BIT_OFFSET | NC_64BIT_DATA
                  | NC_NETCDF4 | NC_CLASSIC_MODEL
                  | NC_SHARE | NC_MPIIO | NC_MPIPOSIX | NC_LOCK | NC_PNETCDF
 		 | NC_DISKLESS
@@ -479,6 +479,7 @@ NC4_create(const char* path, int cmode, size_t initialsz, int basepe,
                  )
        || (cmode & NC_MPIIO && cmode & NC_MPIPOSIX)
        || (cmode & NC_64BIT_OFFSET && cmode & NC_NETCDF4)
+       || (cmode & NC_64BIT_DATA && cmode & NC_NETCDF4)
        || (cmode & (NC_MPIIO | NC_MPIPOSIX) && cmode & NC_DISKLESS)
       )
       return NC_EINVAL;
@@ -497,7 +498,9 @@ NC4_create(const char* path, int cmode, size_t initialsz, int basepe,
    cmode |= NC_NETCDF4;
 
    /* Apply default create format. */
-   if (nc_get_default_format() == NC_FORMAT_64BIT)
+   if (nc_get_default_format() == NC_FORMAT_CDF5)
+      cmode |= NC_64BIT_DATA;
+   else if (nc_get_default_format() == NC_FORMAT_CDF2)
       cmode |= NC_64BIT_OFFSET;
    else if (nc_get_default_format() == NC_FORMAT_NETCDF4_CLASSIC)
       cmode |= NC_CLASSIC_MODEL;

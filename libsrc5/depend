@@ -1,0 +1,38 @@
+nc5attr.o: nc5attr.c ../include/nc5internal.h ../config.h \
+ ../include/ncconfigure.h ../include/netcdf_par.h ../include/nc.h \
+ ../include/netcdf.h ../include/nc3internal.h ../include/ncdispatch.h \
+ ../include/ncuri.h ../include/nc5dispatch.h nc5ncx.h ../libsrc/ncio.h \
+ ../include/fbits.h ../include/rnd.h ../include/utf8proc.h
+nc5dim.o: nc5dim.c ../include/nc5internal.h ../config.h \
+ ../include/ncconfigure.h ../include/netcdf_par.h ../include/nc.h \
+ ../include/netcdf.h ../include/nc3internal.h nc5ncx.h \
+ ../include/ncdispatch.h ../include/ncuri.h ../libsrc/ncio.h \
+ ../include/fbits.h ../include/rnd.h ../include/utf8proc.h
+nc5dispatch.o: nc5dispatch.c ../config.h ../include/ncconfigure.h \
+ ../include/netcdf.h ../include/nc5internal.h ../include/netcdf_par.h \
+ ../include/nc.h ../include/nc3internal.h ../include/nc5dispatch.h \
+ ../include/ncdispatch.h ../include/ncuri.h
+nc5internal.o: nc5internal.c ../config.h ../include/ncconfigure.h \
+ ../include/nc5internal.h ../include/netcdf_par.h ../include/nc.h \
+ ../include/netcdf.h ../include/nc3internal.h ../include/ncdispatch.h \
+ ../include/ncuri.h ../include/nc5dispatch.h ../include/rnd.h nc5ncx.h \
+ ../libsrc/ncio.h ../include/fbits.h
+nc5ncx.o: nc5ncx.c nc5ncx.h ../include/ncdispatch.h ../config.h \
+ ../include/ncconfigure.h ../include/netcdf_par.h ../include/netcdf.h \
+ ../include/nc.h ../include/ncuri.h ../libsrc/ncio.h \
+ ../include/fbits.h ../include/rnd.h ../include/nc5dispatch.h
+nc5putget.o: nc5putget.c ../config.h ../include/ncconfigure.h \
+ ../include/netcdf.h ../include/nc5internal.h ../include/netcdf_par.h \
+ ../include/nc.h ../include/nc3internal.h nc5ncx.h ../include/ncdispatch.h \
+ ../include/ncuri.h ../libsrc/ncio.h ../include/fbits.h ../include/rnd.h \
+ ../include/onstack.h ../include/nc5dispatch.h
+nc5v1hpg.o: nc5v1hpg.c ../config.h ../include/ncconfigure.h \
+ ../include/nc5internal.h ../include/netcdf_par.h ../include/nc.h \
+ ../include/netcdf.h ../include/nc3internal.h ../include/rnd.h nc5ncx.h \
+ ../include/ncdispatch.h ../include/ncuri.h ../libsrc/ncio.h ../include/fbits.h
+nc5var.o: nc5var.c ../config.h ../include/ncconfigure.h \
+ ../include/nc5internal.h ../include/netcdf_par.h ../include/nc.h \
+ ../include/netcdf.h ../include/nc3internal.h nc5ncx.h \
+ ../include/ncdispatch.h ../include/ncuri.h \
+ ../libsrc/ncio.h ../include/fbits.h ../include/rnd.h \
+ ../include/utf8proc.h
