@@ -868,8 +868,11 @@ main(int argc, char **argv)
 	    {
 	       case NC_FORMAT_CLASSIC:
 		  break;
-	       case NC_FORMAT_64BIT:
+	       case NC_FORMAT_CDF2:
 		  cmode = NC_64BIT_OFFSET;
+		  break;
+	       case NC_FORMAT_CDF5:
+		  cmode = NC_64BIT_DATA;
 		  break;
 	       case NC_FORMAT_NETCDF4:
 		  cmode = NC_NETCDF4;

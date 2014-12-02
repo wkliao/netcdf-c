@@ -49,8 +49,8 @@ main(int argc, char **argv)
 	     nc_set_default_format(NC_FORMAT_CLASSIC, NULL);
 	     fprintf(stderr, "\n\nSwitching to netCDF classic format.\n");
 	     break;
-	  case NC_FORMAT_64BIT:
-	     nc_set_default_format(NC_FORMAT_64BIT, NULL);
+	  case NC_FORMAT_CDF2:
+	     nc_set_default_format(NC_FORMAT_CDF2, NULL);
 	     fprintf(stderr, "\n\nSwitching to 64-bit offset format.\n");
 	     break;
 #ifdef USE_NETCDF4 
