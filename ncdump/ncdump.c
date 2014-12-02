@@ -162,7 +162,6 @@ prim_type_name(nc_type type)
 	return "float";
       case NC_DOUBLE:
 	return "double";
-#ifdef USE_NETCDF4
       case NC_UBYTE:
 	return "ubyte";
       case NC_USHORT:
@@ -173,6 +172,7 @@ prim_type_name(nc_type type)
 	return "int64";
       case NC_UINT64:
 	return "uint64";
+#ifdef USE_NETCDF4
       case NC_STRING:
 	return "string";
       case NC_VLEN:
@@ -226,8 +226,10 @@ kind_string(int kind)
     switch (kind) {
     case NC_FORMAT_CLASSIC:
 	return "classic";
-    case NC_FORMAT_64BIT:
+    case NC_FORMAT_CDF2:
 	return "64-bit offset";
+    case NC_FORMAT_CDF5:
+	return "64-bit data";
     case NC_FORMAT_NETCDF4:
 	return "netCDF-4";
     case NC_FORMAT_NETCDF4_CLASSIC:
@@ -247,6 +249,14 @@ kind_string_extended(int kind, int mode)
     switch (kind) {
     case NC_FORMAT_NC3:
 	if(mode & NC_64BIT_OFFSET)
+	    snprintf(text,sizeof(text),"%s mode=%08x", "64-bit offset",mode);
+	else
+	    snprintf(text,sizeof(text),"%s mode=%08x", "classic",mode);
+	break;
+    case NC_FORMAT_NC5:
+	if(mode & NC_64BIT_DATA)
+	    snprintf(text,sizeof(text),"%s mode=%08x", "64-bit data",mode);
+	else if(mode & NC_64BIT_OFFSET)
 	    snprintf(text,sizeof(text),"%s mode=%08x", "64-bit offset",mode);
 	else
 	    snprintf(text,sizeof(text),"%s mode=%08x", "classic",mode);
@@ -320,7 +330,7 @@ pr_att_string(
 	    break;
 	case '\n':		
 	    /* Only generate linebreaks after embedded newlines for
-	     * classic, 64-bit offset, or classic model files.  For
+	     * classic, 64-bit offset/data, or classic model files.  For
 	     * netCDF-4 files, don't generate linebreaks, because that
 	     * would create an extra string in a list of strings.  */
 	    if (kind != NC_FORMAT_NETCDF4) {
@@ -435,12 +445,12 @@ pr_att_valgs(
     char gps[PRIM_LEN];
     float ff;
     double dd;
-#ifdef USE_NETCDF4
     unsigned char uc;
     unsigned short us;
     unsigned int ui;
     int64_t i64;
     uint64_t ui64;
+#ifdef USE_NETCDF4
     char *stringp;
 #endif /* USE_NETCDF4 */
     char *delim = ", ";	/* delimiter between output values */
@@ -505,7 +515,6 @@ pr_att_valgs(
 		}
 	    }
 	    break;
-#ifdef USE_NETCDF4
 	case NC_UBYTE:
 	    uc = ((unsigned char *) vals)[iel];
 	    printf ("%uUB%s", uc, delim);
@@ -526,6 +535,7 @@ pr_att_valgs(
 	    ui64 = ((uint64_t *) vals)[iel];
 	    printf ("%lluUL%s", ui64, delim);
 	    break;
+#ifdef USE_NETCDF4
 	case NC_STRING:
 	    stringp = ((char **) vals)[iel];
             if(stringp)
@@ -561,11 +571,9 @@ pr_att_valsx(
     float ff;
     double dd;
     int ii;
-#ifdef USE_NETCDF4
     unsigned int ui;
     int64_t i64;
     uint64_t ui64;
-#endif /* USE_NETCDF4 */
 
     attvals[0]='\0';
     if (len == 0)
@@ -583,7 +591,6 @@ pr_att_valsx(
 	    (void) strlcat(attvals, gps, attvalslen);
 	    (void) strlcat(attvals, iel < len-1 ? " " : "", attvalslen);
 	    break;
-#ifdef USE_NETCDF4
 	case NC_UBYTE:
 	case NC_USHORT:
 	case NC_UINT:
@@ -607,7 +614,6 @@ pr_att_valsx(
 	    (void) strlcat(attvals, gps, attvalslen);
 	    (void) strlcat(attvals, iel < len-1 ? " " : "", attvalslen);
 	    break;
-#endif /* USE_NETCDF4 */
 	case NC_FLOAT:
 	    ff = vals[iel];
 	    res = snprintf(gps, PRIM_LEN, float_attx_fmt, ff);
@@ -1107,7 +1113,6 @@ print_enum_type(int ncid, nc_type typeid) {
 	case NC_INT:
 	    memval = *(int *)&data;
 	    break;
-#ifdef USE_NETCDF4
 	case NC_UBYTE:
 	    memval = *(unsigned char *)&data;
 	    break;
@@ -1123,7 +1128,6 @@ print_enum_type(int ncid, nc_type typeid) {
 	case NC_UINT64:
 	    memval = *(uint64_t *)&data;
 	    break;
-#endif /* USE_NETCDF4 */
 	default:
 	    error("Bad base type for enum!");
 	    break;
@@ -1262,7 +1266,6 @@ get_fill_info(int ncid, int varid, ncvar_t *vp) {
 	case NC_DOUBLE:
 	    *(double *)fillvalp = NC_FILL_DOUBLE;
 	    break;
-#ifdef USE_NETCDF4
 	case NC_UBYTE:
 	    /* don't do default fill-values for bytes, too risky */
 	    vp->has_fillval = 0;
@@ -1281,6 +1284,7 @@ get_fill_info(int ncid, int varid, ncvar_t *vp) {
 	case NC_UINT64:
 	    *(uint64_t *)fillvalp = NC_FILL_UINT64;
 	    break;
+#ifdef USE_NETCDF4
 	case NC_STRING:
 	    *((char **)fillvalp) = strdup(NC_FILL_STRING);
 	    break;
@@ -1469,7 +1473,7 @@ do_ncdump_rec(int ncid, const char *path)
    /* Because netCDF-4 can have a string attribute with multiple
     * string values, we can't output strings with embedded newlines
     * as what look like multiple strings, as we do for classic and
-    * 64-bit offset files.  So we need to know the output file type
+    * 64-bit offset/data files.  So we need to know the output file type
     * to know how to print strings with embedded newlines. */
    NC_CHECK( nc_inq_format(ncid, &kind) );
        
