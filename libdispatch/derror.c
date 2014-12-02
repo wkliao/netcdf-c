@@ -9,6 +9,10 @@ Research/Unidata. See COPYRIGHT file for more info.
 
 #include "ncdispatch.h"
 
+#ifdef USE_PNETCDF
+#include <pnetcdf.h>  /* ncmpi_strerror() */
+#endif
+
 /* Tell the user the version of netCDF. */
 static const char nc_libvers[] = PACKAGE_VERSION " of "__DATE__" "__TIME__" $";
 
@@ -256,7 +260,11 @@ const char *nc_strerror(int ncerr1)
       case NC_EDISKLESS:
 	 return "NetCDF: Error in using diskless access";
       default:
+#ifdef USE_PNETCDF
+	 return ncmpi_strerror(ncerr1); /* PnetCDF error string */
+#else
 	 return "Unknown Error";
+#endif
    }
 }
 
