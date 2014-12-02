@@ -1220,8 +1220,7 @@ test_nc_get_varm(void)
         }
         if (var_rank[i] > 0) {
             j = var_rank[i] - 1;
-            // imap[j] = nctypelen(var_type[i]); /* in bytes */
-            imap[j] = 1; /* in numbers of elements */
+            imap[j] = 1; /* unit in numbers of elements, not bytes */
             for (; j > 0; j--)
                 imap[j-1] = imap[j] * var_shape[i][j];
         }

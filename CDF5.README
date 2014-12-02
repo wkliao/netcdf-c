@@ -198,6 +198,9 @@ Directory ncdump/
 	ncdump/tst_lengths.sh
 	# add testings for CDF-5 file format
 
+	ncdump/tst_formatx3.sh
+	# add testings for CDF-5 file format
+
 Directory nc5_test/
 	nc5_test
 	# new directory for testing CDF-5 dispatch
@@ -231,7 +234,7 @@ Directory nctest/
 	# add checking for CDF-5 file format
 
 Directory examples/
-	C/parallel_vara.c
+	examples/C/parallel_vara.c
 	# add an example program that does parallel I/O on a CDF-1 file
 
 Directory docs/

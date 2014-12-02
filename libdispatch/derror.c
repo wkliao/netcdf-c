@@ -8,6 +8,7 @@ Research/Unidata. See COPYRIGHT file for more info.
 */
 
 #include "ncdispatch.h"
+
 #ifdef USE_PNETCDF
 #include <pnetcdf.h>  /* ncmpi_strerror() */
 #endif
@@ -258,9 +259,9 @@ const char *nc_strerror(int ncerr1)
 	 return "NetCDF: Error in using diskless access";
       default:
 #ifdef USE_PNETCDF
-	return ncmpi_strerror(ncerr1);
+	 return ncmpi_strerror(ncerr1);
 #else
-	return "Unknown Error";
+	 return "Unknown Error";
 #endif
    }
 }
