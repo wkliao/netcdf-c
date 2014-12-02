@@ -56,6 +56,16 @@ nc5i_len_NC_attrV(nc_type type, size_t nelems)
 		return nc5x_len_float(nelems);
 	case NC_DOUBLE:
 		return nc5x_len_double(nelems);
+	case NC_UBYTE:
+		return nc5x_len_ubyte(nelems);
+	case NC_USHORT:
+		return nc5x_len_ushort(nelems);
+	case NC_UINT:
+		return nc5x_len_uint(nelems);
+	case NC_INT64:
+		return nc5x_len_int64(nelems);
+	case NC_UINT64:
+		return nc5x_len_uint64(nelems);
 	default:
 	        assert("nc5i_len_NC_attr bad type" == 0);
 	}
@@ -663,6 +673,16 @@ nc5x_pad_putn_I$1(void **xpp, size_t nelems, const $1 *tp, nc_type type)
 		return nc5x_putn_float_$1(xpp, nelems, tp);
 	case NC_DOUBLE:
 		return nc5x_putn_double_$1(xpp, nelems, tp);
+	case NC_UBYTE:
+		return nc5x_pad_putn_uchar_$1(xpp, nelems, tp);
+	case NC_USHORT:
+		return nc5x_putn_ushort_$1(xpp, nelems, tp);
+	case NC_UINT:
+		return nc5x_putn_uint_$1(xpp, nelems, tp);
+	case NC_INT64:
+		return nc5x_putn_int64_$1(xpp, nelems, tp);
+	case NC_UINT64:
+		return nc5x_putn_uint64_$1(xpp, nelems, tp);
 	default:
                 assert("nc5x_pad_putn_I$1 invalid type" == 0);
 	}
@@ -680,6 +700,8 @@ nc5x_pad_getn_I$1(const void **xpp, size_t nelems, $1 *tp, nc_type type)
 	switch(type) {
 	case NC_CHAR:
 		return NC_ECHAR;
+	case NC_UBYTE:
+		return nc5x_pad_getn_uchar_$1(xpp, nelems, tp);
 	case NC_BYTE:
 		return nc5x_pad_getn_schar_$1(xpp, nelems, tp);
 	case NC_SHORT:
@@ -690,6 +712,14 @@ nc5x_pad_getn_I$1(const void **xpp, size_t nelems, $1 *tp, nc_type type)
 		return nc5x_getn_float_$1(xpp, nelems, tp);
 	case NC_DOUBLE:
 		return nc5x_getn_double_$1(xpp, nelems, tp);
+	case NC_USHORT:
+		return nc5x_getn_ushort_$1(xpp, nelems, tp);
+	case NC_UINT:
+		return nc5x_getn_uint_$1(xpp, nelems, tp);
+	case NC_INT64:
+		return nc5x_getn_int64_$1(xpp, nelems, tp);
+	case NC_UINT64:
+		return nc5x_getn_uint64_$1(xpp, nelems, tp);
 	default:
 	        assert("nc5x_pad_getn_I$1 invalid type" == 0);
 	}
@@ -724,6 +754,16 @@ XNCX_PAD_GETN(long)
 XNCX_PAD_PUTN(longlong)
 XNCX_PAD_GETN(longlong)
 
+XNCX_PAD_PUTN(ushort)
+XNCX_PAD_GETN(ushort)
+
+XNCX_PAD_PUTN(uint)
+XNCX_PAD_GETN(uint)
+
+XNCX_PAD_PUTN(ulonglong)
+XNCX_PAD_GETN(ulonglong)
+
+
 /* Common dispatcher for put cases */
 static int
 dispatchput(void **xpp, size_t nelems, const void* tp,
@@ -744,8 +784,14 @@ dispatchput(void **xpp, size_t nelems, const void* tp,
         return nc5x_pad_putn_Idouble(xpp, nelems, (double*)tp, atype);
     case NC_UBYTE: /*Synthetic*/
         return nc5x_pad_putn_Iuchar(xpp,nelems, (uchar *)tp, atype);
+    case NC_USHORT:
+          return nc5x_pad_putn_Iushort(xpp, nelems, (ushort*)tp, atype);
+    case NC_UINT:
+          return nc5x_pad_putn_Iuint(xpp, nelems, (uint*)tp, atype);
     case NC_INT64:
           return nc5x_pad_putn_Ilonglong(xpp, nelems, (longlong*)tp, atype);
+    case NC_UINT64:
+          return nc5x_pad_putn_Iulonglong(xpp, nelems, (ulonglong*)tp, atype);
     case NC_NAT:
         return NC_EBADTYPE;
     default:
@@ -795,6 +841,16 @@ NC5_put_att(
             return ncmpi_put_att_float(nc->int_ncid, varid, name, type, nelems, (float*)value);
         case NC_DOUBLE:
             return ncmpi_put_att_double(nc->int_ncid, varid, name, type, nelems, (double*)value);
+        case NC_UBYTE:
+            return ncmpi_put_att_uchar(nc->int_ncid, varid, name, type, nelems, (unsigned char*)value);
+        case NC_USHORT:
+            return ncmpi_put_att_ushort(nc->int_ncid, varid, name, type, nelems, (unsigned short*)value);
+        case NC_UINT:
+            return ncmpi_put_att_uint(nc->int_ncid, varid, name, type, nelems, (unsigned int*)value);
+        case NC_INT64:
+            return ncmpi_put_att_longlong(nc->int_ncid, varid, name, type, nelems, (long long*)value);
+        case NC_UINT64:
+            return ncmpi_put_att_ulonglong(nc->int_ncid, varid, name, type, nelems, (unsigned long long*)value);
         default:
             return NC_EBADTYPE;
         }
@@ -935,6 +991,16 @@ NC5_get_att(
             return ncmpi_get_att_float(nc->int_ncid, varid, name, (float*)value);
         case NC_DOUBLE:
             return ncmpi_get_att_double(nc->int_ncid, varid, name, (double*)value);
+        case NC_UBYTE:
+            return ncmpi_get_att_uchar(nc->int_ncid, varid, name, (unsigned char*)value);
+        case NC_USHORT:
+            return ncmpi_get_att_ushort(nc->int_ncid, varid, name, (unsigned short*)value);
+        case NC_UINT:
+            return ncmpi_get_att_uint(nc->int_ncid, varid, name, (unsigned int*)value);
+        case NC_INT64:
+            return ncmpi_get_att_longlong(nc->int_ncid, varid, name, (long long*)value);
+        case NC_UINT64:
+            return ncmpi_get_att_ulonglong(nc->int_ncid, varid, name, (unsigned long long*)value);
         default:
 	    break;
         }
@@ -970,8 +1036,14 @@ NC5_get_att(
         return nc5x_pad_getn_Idouble(&xp,attrp->nelems,(double*)value,attrp->type);
     case NC_UBYTE: /* Synthetic */
         return nc5x_pad_getn_Iuchar(&xp, attrp->nelems , (uchar *)value, attrp->type);
+    case NC_USHORT:
+          return nc5x_pad_getn_Iushort(&xp,attrp->nelems,(ushort*)value,attrp->type);
+    case NC_UINT:
+          return nc5x_pad_getn_Iuint(&xp,attrp->nelems,(uint*)value,attrp->type);
     case NC_INT64:
           return nc5x_pad_getn_Ilonglong(&xp,attrp->nelems,(longlong*)value,attrp->type);
+    case NC_UINT64:
+          return nc5x_pad_getn_Iulonglong(&xp,attrp->nelems,(ulonglong*)value,attrp->type);
     case NC_NAT:
         return NC_EBADTYPE;
     default:

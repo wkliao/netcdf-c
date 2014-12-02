@@ -1447,10 +1447,15 @@ int
 nc_inq_type(int ncid, nc_type xtype, char *name, size_t *size)
 {
    NC* ncp;
+   int format, maxType;
+
+   /* CDF-1 and 2 support atomic types up to NC_DOUBLE, CDF-5 NC_UINT64  */
+   nc_inq_format(ncid, &format);
+   maxType = (format == NC_FORMAT_CDF5) ? NC_UINT64 : NC_DOUBLE;
 
    /* For compatibility, we need to allow inq about
       atomic types, even if ncid is ill-defined */
-   if(xtype <= ATOMICTYPEMAX) {
+   if(xtype <= maxType) {
       if(xtype <= NC_NAT) return NC_EBADTYPE;
       if(name) strncpy(name,NC_atomictypename(xtype),NC_MAX_NAME);
       if(size) *size = NC_atomictypelen(xtype);

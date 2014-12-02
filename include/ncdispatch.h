@@ -80,7 +80,7 @@
 #ifdef USE_NETCDF4
 #define ATOMICTYPEMAX NC_STRING
 #else
-#define ATOMICTYPEMAX NC_DOUBLE
+#define ATOMICTYPEMAX NC_UINT64
 #endif
 
 /* Define an alias for int to indicate an error return */
