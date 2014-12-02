@@ -44,6 +44,6 @@ endif # USE_NETCDF4
 
 # These files are created by the tests.
 CLEANFILES = sfc_pres_temp.nc simple_xy.nc pres_temp_4D.nc	\
-simple_nc4.nc simple_xy_nc4.nc
+simple_nc4.nc simple_xy_nc4.nc testfile.nc
 
 EXTRA_DIST = run_valgrind_tests.sh run_nc4_valgrind_tests.sh CMakeLists.txt
