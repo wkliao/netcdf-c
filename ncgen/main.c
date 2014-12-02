@@ -40,7 +40,7 @@ int header_only;
 int k_flag;    /* > 0  => -k was specified on command line*/
 int format_flag;   /* _Format attribute value (same range as -k flag) */
 int format_attribute; /* 1=>format came from format attribute */
-int enhanced_flag; /* 1 => netcdf-4 constructs appear in the parse */
+int enhanced_flag; /* 1 => netcdf-4/CDF-5 constructs appear in the parse */
 int specials_flag; /* 1=> special attributes are present */
 int usingclassic;
 int cmode_modifier;
@@ -95,6 +95,12 @@ struct Kvalues legalkinds[NKVALUES] = {
     {"netCDF4_classic", NC_FORMAT_NETCDF4_CLASSIC},
     {"hdf5-nc3", NC_FORMAT_NETCDF4_CLASSIC},
     {"enhanced-nc3", NC_FORMAT_NETCDF4_CLASSIC},
+
+    /* CDF-5 format */
+    {"64-bit data", NC_FORMAT_CDF5},
+    {"nc5", NC_FORMAT_CDF5},
+    {"5", NC_FORMAT_CDF5},
+    {"64-bit-data", NC_FORMAT_CDF5},
 
     /* null terminate*/
     {NULL,0}
@@ -299,11 +305,13 @@ main(
 		       "64-bit offset" or "nc6"
 		       "netCDF-4" or "nc4"
 		       "netCDF-4 classic model" or "nc7"
+		       "64-bit data" or "nc5"
 		     Format version numbers (deprecated):
 		       1 (=> classic)
 		       2 (=> 64-bit offset)
 		       3 (=> netCDF-4)
 		       4 (=> netCDF-4 classic model)
+		       5 (=> 64-bit data)
 		   */
 	    {
 		struct Kvalues* kvalue;
@@ -479,7 +487,7 @@ main(
     if(enhanced_flag && k_flag == 0)
 	k_flag = 3;
 
-    if(enhanced_flag && k_flag != 3) {
+    if(enhanced_flag && k_flag != 3 && k_flag != 5) {
 	derror("-k or _Format conflicts with enhanced CDL input");
 	return 0;
     }
@@ -494,7 +502,7 @@ main(
     if(k_flag == 0)
 	k_flag = 1;
 
-    usingclassic = (k_flag <= 2 || k_flag == 4)?1:0;
+    usingclassic = (k_flag <= 2 || k_flag == 4 || k_flag == 5)?1:0;
 
     /* compute cmode_modifier */
     switch (k_flag) {
@@ -502,6 +510,7 @@ main(
     case 2: cmode_modifier = NC_64BIT_OFFSET; break;
     case 3: cmode_modifier = NC_NETCDF4; break;
     case 4: cmode_modifier = NC_NETCDF4 | NC_CLASSIC_MODEL; break;
+    case 5: cmode_modifier = NC_64BIT_DATA; break;
     default: ASSERT(0); /* cannot happen */
     }
 

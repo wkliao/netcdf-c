@@ -825,13 +825,6 @@ inferattributetype(Symbol* asym)
         /* If we are in classic mode, then restrict the inferred type
            to the classic types */
 	switch (nctype) {
-	case NC_UBYTE:
-	    nctype = NC_SHORT;
-	    break;	
-	case NC_USHORT:
-	case NC_UINT:
-	case NC_INT64:
-	case NC_UINT64:
 	case NC_OPAQUE:
 	case NC_ENUM:
 	    nctype = NC_INT;
