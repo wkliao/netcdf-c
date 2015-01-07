@@ -2192,8 +2192,7 @@ define(`NCX_GETN',dnl
 int
 nc5x_getn_$1_$2(const void **xpp, size_t nelems, $2 *tp)
 {
-#if _SX && \
-           Xsizeof($1) == Isizeof($1)
+`#'if _SX && Xsizeof($1) == Isizeof($1)
 
  /* basic algorithm is:
   *   - ensure sane alignment of input data
@@ -2409,8 +2408,7 @@ define(`NCX_PUTN',dnl
 int
 nc5x_putn_$1_$2(void **xpp, size_t nelems, const $2 *tp)
 {
-#if _SX && \
-           Xsizeof($1) == Isizeof($1)
+`#'if _SX && Xsizeof($1) == Isizeof($1)
 
  /* basic algorithm is:
   *   - ensure sane alignment of output data

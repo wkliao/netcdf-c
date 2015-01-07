@@ -4310,8 +4310,7 @@ test_nc_get_vars_text(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_TEXT)
 				&& expect[j] >= text_min && expect[j] <= text_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_TEXT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_TEXT)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -4489,8 +4488,7 @@ test_nc_get_vars_uchar(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_UCHAR)
 				&& expect[j] >= uchar_min && expect[j] <= uchar_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_UCHAR)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_UCHAR)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -4668,8 +4666,7 @@ test_nc_get_vars_schar(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_SCHAR)
 				&& expect[j] >= schar_min && expect[j] <= schar_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_SCHAR)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_SCHAR)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -4847,8 +4844,7 @@ test_nc_get_vars_short(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_SHORT)
 				&& expect[j] >= short_min && expect[j] <= short_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_SHORT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_SHORT)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -5026,8 +5022,7 @@ test_nc_get_vars_int(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_INT)
 				&& expect[j] >= int_min && expect[j] <= int_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_INT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_INT)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -5205,8 +5200,7 @@ test_nc_get_vars_long(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_LONG)
 				&& expect[j] >= long_min && expect[j] <= long_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_LONG)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_LONG)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -5384,8 +5378,7 @@ test_nc_get_vars_float(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_FLOAT)
 				&& expect[j] >= float_min && expect[j] <= float_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_FLOAT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_FLOAT)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -5563,8 +5556,7 @@ test_nc_get_vars_double(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_DOUBLE)
 				&& expect[j] >= double_min && expect[j] <= double_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_DOUBLE)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_DOUBLE)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -5742,8 +5734,7 @@ test_nc_get_vars_ushort(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_USHORT)
 				&& expect[j] >= ushort_min && expect[j] <= ushort_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_USHORT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_USHORT)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -5921,8 +5912,7 @@ test_nc_get_vars_uint(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_UINT)
 				&& expect[j] >= uint_min && expect[j] <= uint_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_UINT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_UINT)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -6100,8 +6090,7 @@ test_nc_get_vars_longlong(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_LONGLONG)
 				&& expect[j] >= longlong_min && expect[j] <= longlong_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_LONGLONG)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_LONGLONG)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -6279,8 +6268,7 @@ test_nc_get_vars_ulonglong(void)
 		    for (j = 0; j < nels; j++) {
 			if (inRange3(expect[j],var_type[i],NCT_ULONGLONG)
 				&& expect[j] >= ulonglong_min && expect[j] <= ulonglong_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_ULONGLONG)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_ULONGLONG)){
 				error("value read not that expected");
 				if (verbose) {
 				    error("\n");
@@ -6470,8 +6458,7 @@ test_nc_get_varm_text(void)
                         if (inRange3(expect[j],var_type[i],NCT_TEXT)
                                 && expect[j] >= text_min 
 				&& expect[j] <= text_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_TEXT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_TEXT)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -6657,8 +6644,7 @@ test_nc_get_varm_uchar(void)
                         if (inRange3(expect[j],var_type[i],NCT_UCHAR)
                                 && expect[j] >= uchar_min 
 				&& expect[j] <= uchar_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_UCHAR)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_UCHAR)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -6844,8 +6830,7 @@ test_nc_get_varm_schar(void)
                         if (inRange3(expect[j],var_type[i],NCT_SCHAR)
                                 && expect[j] >= schar_min 
 				&& expect[j] <= schar_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_SCHAR)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_SCHAR)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -7031,8 +7016,7 @@ test_nc_get_varm_short(void)
                         if (inRange3(expect[j],var_type[i],NCT_SHORT)
                                 && expect[j] >= short_min 
 				&& expect[j] <= short_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_SHORT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_SHORT)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -7218,8 +7202,7 @@ test_nc_get_varm_int(void)
                         if (inRange3(expect[j],var_type[i],NCT_INT)
                                 && expect[j] >= int_min 
 				&& expect[j] <= int_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_INT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_INT)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -7405,8 +7388,7 @@ test_nc_get_varm_long(void)
                         if (inRange3(expect[j],var_type[i],NCT_LONG)
                                 && expect[j] >= long_min 
 				&& expect[j] <= long_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_LONG)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_LONG)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -7592,8 +7574,7 @@ test_nc_get_varm_float(void)
                         if (inRange3(expect[j],var_type[i],NCT_FLOAT)
                                 && expect[j] >= float_min 
 				&& expect[j] <= float_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_FLOAT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_FLOAT)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -7779,8 +7760,7 @@ test_nc_get_varm_double(void)
                         if (inRange3(expect[j],var_type[i],NCT_DOUBLE)
                                 && expect[j] >= double_min 
 				&& expect[j] <= double_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_DOUBLE)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_DOUBLE)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -7966,8 +7946,7 @@ test_nc_get_varm_ushort(void)
                         if (inRange3(expect[j],var_type[i],NCT_USHORT)
                                 && expect[j] >= ushort_min 
 				&& expect[j] <= ushort_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_USHORT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_USHORT)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -8153,8 +8132,7 @@ test_nc_get_varm_uint(void)
                         if (inRange3(expect[j],var_type[i],NCT_UINT)
                                 && expect[j] >= uint_min 
 				&& expect[j] <= uint_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_UINT)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_UINT)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -8340,8 +8318,7 @@ test_nc_get_varm_longlong(void)
                         if (inRange3(expect[j],var_type[i],NCT_LONGLONG)
                                 && expect[j] >= longlong_min 
 				&& expect[j] <= longlong_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_LONGLONG)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_LONGLONG)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -8527,8 +8504,7 @@ test_nc_get_varm_ulonglong(void)
                         if (inRange3(expect[j],var_type[i],NCT_ULONGLONG)
                                 && expect[j] >= ulonglong_min 
 				&& expect[j] <= ulonglong_max) {
-			    IF (!equal(value[j],expect[j],var_type[i],
-				    NCT_ULONGLONG)){
+			    IF (!equal(value[j],expect[j],var_type[i], NCT_ULONGLONG)){
                                 error("value read not that expected");
                                 if (verbose) {
                                     error("\n");
@@ -8621,8 +8597,7 @@ test_nc_get_att_text(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_TEXT)
                             && expect[k] >= text_min && expect[k] <= text_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_TEXT)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_TEXT)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -8712,8 +8687,7 @@ test_nc_get_att_uchar(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_UCHAR)
                             && expect[k] >= uchar_min && expect[k] <= uchar_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_UCHAR)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_UCHAR)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -8803,8 +8777,7 @@ test_nc_get_att_schar(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_SCHAR)
                             && expect[k] >= schar_min && expect[k] <= schar_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_SCHAR)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_SCHAR)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -8894,8 +8867,7 @@ test_nc_get_att_short(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_SHORT)
                             && expect[k] >= short_min && expect[k] <= short_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_SHORT)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_SHORT)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -8985,8 +8957,7 @@ test_nc_get_att_int(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_INT)
                             && expect[k] >= int_min && expect[k] <= int_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_INT)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_INT)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -9076,8 +9047,7 @@ test_nc_get_att_long(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_LONG)
                             && expect[k] >= long_min && expect[k] <= long_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_LONG)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_LONG)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -9167,8 +9137,7 @@ test_nc_get_att_float(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_FLOAT)
                             && expect[k] >= float_min && expect[k] <= float_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_FLOAT)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_FLOAT)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -9258,8 +9227,7 @@ test_nc_get_att_double(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_DOUBLE)
                             && expect[k] >= double_min && expect[k] <= double_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_DOUBLE)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_DOUBLE)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -9349,8 +9317,7 @@ test_nc_get_att_ushort(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_USHORT)
                             && expect[k] >= ushort_min && expect[k] <= ushort_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_USHORT)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_USHORT)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -9440,8 +9407,7 @@ test_nc_get_att_uint(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_UINT)
                             && expect[k] >= uint_min && expect[k] <= uint_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_UINT)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_UINT)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -9531,8 +9497,7 @@ test_nc_get_att_longlong(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_LONGLONG)
                             && expect[k] >= longlong_min && expect[k] <= longlong_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_LONGLONG)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_LONGLONG)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
@@ -9622,8 +9587,7 @@ test_nc_get_att_ulonglong(void)
 		for (k = 0; k < ATT_LEN(i,j); k++) {
 		    if (inRange3(expect[k],ATT_TYPE(i,j),NCT_ULONGLONG)
                             && expect[k] >= ulonglong_min && expect[k] <= ulonglong_max) {
-			IF (!equal(value[k],expect[k],ATT_TYPE(i,j),
-				NCT_ULONGLONG)){
+			IF (!equal(value[k],expect[k],ATT_TYPE(i,j), NCT_ULONGLONG)){
 			    error("value read not that expected");
                             if (verbose) {
                                 error("\n");
