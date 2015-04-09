@@ -23,7 +23,28 @@
 
 #ifdef USE_PNETCDF
 /* Must follow netcdf.h */
+/* In PnetCDF version 1.5.0 and prior, NC_64BIT_DATA is defined in conflict
+ *  * with 1.6.0 and netCDF 4.3.4.
+ *   * In PnetCDF version 1.4.1 and prior, NC_FILL_STRING and NC4_LAST_ERROR are
+ *    * either undefined or in conflict with netCDF.
+ *     * Redefine these constants to avoid compilation warning.
+ *      */
+#undef NC_64BIT_DATA
+#undef NC_FILL_STRING
+#undef NC4_LAST_ERROR
 #include <pnetcdf.h>
+#ifdef NC_64BIT_DATA
+#undef NC_64BIT_DATA
+#endif
+#ifdef NC_FILL_STRING
+#undef NC_FILL_STRING
+#endif
+#ifdef NC4_LAST_ERROR
+#undef NC4_LAST_ERROR
+#endif
+#define NC_64BIT_DATA 0x0020
+#define NC_FILL_STRING  ((char *)"")
+#define NC4_LAST_ERROR  (-131)
 #endif
 
 /* Define accessors for the dispatchdata */
@@ -1092,10 +1113,31 @@ NC5_create(const char *path, int cmode,
         /* No MPI environment initialized */
         if (mpidata == NULL) return NC_ENOPAR;
 
+	if (fIsSet(cmode, NC_64BIT_DATA)) {
+            /* resolve conflicted define macro for NC_64BIT_DATA in variouse
+             * PnetCDF header file, pnetcdf.h
+             */
+            const char *pnetcdf_version = ncmpi_inq_libvers();
+
+            if (pnetcdf_version[0] == 'v') { /* 1.3.0 and prior */
+                fClr(cmode, NC_64BIT_DATA);
+                if (pnetcdf_version[12] < '3')
+                    fSet(cmode, 0x1000);  /* 1.2.0 and prior */
+                else
+                    fSet(cmode, 0x0010);  /* 1.3.0 and 1.3.1*/
+            }
+            else if (pnetcdf_version[0] == '1') { /* 1.4.0 and later */
+                if (pnetcdf_version[2] < '6') { /* from 1.4.0 to 1.5.0 */
+                    fClr(cmode, NC_64BIT_DATA);
+                    fSet(cmode, 0x0010);
+                }
+            }
+        }
+
         res = ncmpi_create(((NC_MPI_INFO *)mpidata)->comm, path, cmode,
                            ((NC_MPI_INFO *)mpidata)->info, &(nc->int_ncid));
 
-        if(res != NC_NOERR && nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
+        if (res != NC_NOERR && nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
         return res;
     }
 #endif
@@ -1214,6 +1256,27 @@ NC5_open(const char *path, int cmode,
         /* No MPI environment initialized */
         if (mpidata == NULL) return NC_ENOPAR;
 
+	if (fIsSet(cmode, NC_64BIT_DATA)) {
+            /* resolve conflicted define macro for NC_64BIT_DATA in variouse
+             * PnetCDF header file, pnetcdf.h
+             */
+            const char *pnetcdf_version = ncmpi_inq_libvers();
+
+            if (pnetcdf_version[0] == 'v') { /* 1.3.0 and prior */
+                fClr(cmode, NC_64BIT_DATA);
+                if (pnetcdf_version[12] < '3')
+                    fSet(cmode, 0x1000);  /* 1.2.0 and prior */
+                else
+                    fSet(cmode, 0x0010);  /* 1.3.0 and 1.3.1*/
+            }
+            else if (pnetcdf_version[0] == '1') { /* 1.4.0 and later */
+                if (pnetcdf_version[2] < '6') { /* from 1.4.0 to 1.5.0 */
+                    fClr(cmode, NC_64BIT_DATA);
+                    fSet(cmode, 0x0010);
+                }
+            }
+        }
+
         res = ncmpi_open(((NC_MPI_INFO *)mpidata)->comm, path, cmode,
                          ((NC_MPI_INFO *)mpidata)->info, &(nc->int_ncid));
 
@@ -1222,7 +1285,7 @@ NC5_open(const char *path, int cmode,
 	    res = ncmpi_begin_indep_data(nc->int_ncid);
 	    nc5->pnetcdf_access_mode = NC_INDEPENDENT;
         }
-        if(res != NC_NOERR && nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
+        if (res != NC_NOERR && nc5 != NULL) free_NC5INFO(nc5); /* reclaim allocated space */
         return res;
     }
 #endif
@@ -1287,7 +1350,12 @@ NC5__enddef(int ncid,
 
 #ifdef USE_PNETCDF
     if (nc5->use_parallel) {
+#if defined(PNETCDF_VERSION_MAJOR) && (PNETCDF_VERSION_MAJOR > 1 || (PNETCDF_VERSION_MAJOR >= 1 && PNETCDF_VERSION_MINOR >= 5))
+        /* ncmpi__enddef() is only defined in PnetCDF 1.5.0 and later */
         status = ncmpi__enddef(nc->int_ncid, h_minfree, v_align, v_minfree, r_align);
+#else
+        status = ncmpi_enddef(nc->int_ncid);
+#endif
         if(status == NC_NOERR) {
 	    if (nc5->pnetcdf_access_mode == NC_INDEPENDENT)
 	        status = ncmpi_begin_indep_data(nc->int_ncid);

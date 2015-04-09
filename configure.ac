@@ -909,8 +909,52 @@ if test "x$enable_logging" = xyes; then
    AC_DEFINE([LOGGING], 1, [If true, turn on logging.])
 fi
 
+dnl CHECK_PNETCDF_VERSION(minVersion, [action-if-yes], [action-if-not])
+dnl
+AC_DEFUN([CHECK_PNETCDF_VERSION],
+[
+   PNETCDF_VERSION=""
+   AS_VAR_PUSHDEF([ac_Ver], [ac_cv_pnetcdf_version])dnl
+   AC_CACHE_CHECK(
+      [for minimum required PnetCDF version $1], [ac_Ver],
+      [cat >conftest.c <<EOF
+#include <pnetcdf.h>
+EOF
+       ${CPP} ${CPPFLAGS} conftest.c >& conftest.err
+       ac_Path=`sed -n '/\.h"/s/.*"\(.*\)".*/\1/p' conftest.err | grep -m 1 pnetcdf`
+       rm -f conftest.c conftest.err
+
+       if grep "PNETCDF_VERSION_MAJOR" $ac_Path >/dev/null ; then
+          dnl only PnetCDF 1.1.1 and later have PNETCDF_VERSION_MAJOR defined
+          ac_MAJOR=`grep "define PNETCDF_VERSION_MAJOR" $ac_Path | cut -d' ' -f3`
+          ac_MINOR=`grep "define PNETCDF_VERSION_MINOR" $ac_Path | cut -d' ' -f3`
+          ac_SUB=`grep "define PNETCDF_VERSION_SUB" $ac_Path | cut -d' ' -f3`
+          PNETCDF_VERSION="$ac_MAJOR.$ac_MINOR.$ac_SUB"
+       else
+          PNETCDF_VERSION="1.1.0 or prior"
+       fi
+       if [[[ "$PNETCDF_VERSION" < "$1" ]]]; then
+          ac_Ver=no
+       else
+          ac_Ver=yes
+       fi])
+   AS_IF([test AS_VAR_GET(ac_Ver) = yes], [$2], [$3])[]dnl
+   if test "x$ac_Ver" == xno ; then
+       AC_MSG_WARN([PnetCDF library in use is of version $PNETCDF_VERSION])
+   fi
+   AS_VAR_POPDEF([ac_Ver])dnl
+])
+
 # Using pnetcdf for classic parallel I/O?
 if test "x$enable_pnetcdf" = xyes; then
+
+dnl uncomment the lines below to enforce minimum PnetCDF version requirement
+dnl   PNETCDF_MIN_VER=1.6.0
+dnl   CHECK_PNETCDF_VERSION([$PNETCDF_MIN_VER])
+dnl   if test "x$ac_cv_pnetcdf_version" = xno; then
+dnl      AC_MSG_ERROR([PnetCDF library does not meet the minimum requirement])
+dnl   fi
+
   AC_CHECK_LIB([pnetcdf], [ncmpi_create], [],
   [AC_MSG_ERROR([Cannot link to pnetcdf library, yet --enable-pnetcdf was used.])])
   AC_DEFINE([USE_PNETCDF], [1], [if true, parallel netCDF is used])

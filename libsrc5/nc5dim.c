@@ -14,7 +14,28 @@
 
 #ifdef USE_PNETCDF
 /* Must follow netcdf.h */
+/* In PnetCDF version 1.5.0 and prior, NC_64BIT_DATA is defined in conflict
+ * with 1.6.0 and netCDF 4.3.4.
+ * In PnetCDF version 1.4.1 and prior, NC_FILL_STRING and NC4_LAST_ERROR are
+ * either undefined or in conflict with netCDF.
+ * Redefine these constants to avoid compilation warning.
+ */
+#undef NC_64BIT_DATA
+#undef NC_FILL_STRING
+#undef NC4_LAST_ERROR
 #include <pnetcdf.h>
+#ifdef NC_64BIT_DATA
+#undef NC_64BIT_DATA
+#endif
+#ifdef NC_FILL_STRING
+#undef NC_FILL_STRING
+#endif
+#ifdef NC4_LAST_ERROR
+#undef NC4_LAST_ERROR
+#endif
+#define NC_64BIT_DATA 0x0020
+#define NC_FILL_STRING  ((char *)"")
+#define NC4_LAST_ERROR  (-131)
 #endif
 
 /*

@@ -16,11 +16,6 @@
 #include "nc5internal.h"
 #include "nc5dispatch.h"
 
-/* Must follow netcdf.h */
-#ifdef USE_PNETCDF
-#include <pnetcdf.h>
-#endif
-
 #ifndef NC_CONTIGUOUS
 #define NC_CONTIGUOUS 1
 #endif

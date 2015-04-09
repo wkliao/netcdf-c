@@ -101,11 +101,16 @@ main(int argc, char **argv)
 #define ATTNUM ((sizeof attvals)/(sizeof attvals[0]))
 
 #ifdef TEST_PNETCDF
-MPI_Init(&argc, &argv);
+   MPI_Init(&argc, &argv);
 #endif
    printf("\n*** testing UTF-8 normalization...");
    cmode = NC_CLOBBER | NC_64BIT_DATA;
 #ifdef TEST_PNETCDF
+#if !(defined(PNETCDF_VERSION_MAJOR) && defined(TEST_PNETCDF) && (PNETCDF_VERSION_MAJOR > 1 || (PNETCDF_VERSION_MAJOR >= 1 && PNETCDF_VERSION_MINOR >= 6)))
+   printf("\n*** This test requires PnetCDF 1.6.0 or higher ... exiting\n");
+   MPI_Finalize();
+   return 0;
+#endif
    if((res = nc_create_par(FILE7_NAME, cmode | NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL,&ncid)))
 #else
    if((res = nc_create(FILE7_NAME, cmode, &ncid)))
@@ -138,6 +143,7 @@ MPI_Init(&argc, &argv);
 
    if ((res = nc_def_var(ncid, NNAME, NC_CHAR, NDIMS, dimids, &varid)) != NC_ENAMEINUSE)
        ERR;
+
    if ((res = nc_enddef(ncid)))
        ERR;
 

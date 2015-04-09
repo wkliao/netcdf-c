@@ -169,7 +169,7 @@ Use this in mode flags for both nc_create() and nc_open(). */
 #define NC_FORMAT_NETCDF4 (3)
 #define NC_FORMAT_NETCDF4_CLASSIC  (4)
 #define NC_FORMAT_CDF2    NC_FORMAT_64BIT
-#define NC_FORMAT_CDF5    (5)
+#define NC_FORMAT_CDF5    5
 
 /**@}*/
 
