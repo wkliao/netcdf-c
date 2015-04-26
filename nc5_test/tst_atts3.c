@@ -9,7 +9,9 @@
 
 #include <nc_tests.h>
 #include "netcdf.h"
+#ifdef TEST_PNETCDF
 #include "netcdf_par.h"
+#endif
 #include <signal.h>
 
 #define FILE_NAME "tst_atts_3.nc"

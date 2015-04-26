@@ -22,9 +22,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <mpi.h>
 #include <netcdf.h>
+#ifdef TEST_PNETCDF
+#include <mpi.h>
 #include <netcdf_par.h>
+#endif
 
 #define MAXSHORT	32767
 #define MAXINT		2147483647

@@ -7,10 +7,12 @@
    $Id: tst_small.c 2796 2014-10-28 03:40:29Z wkliao $
 */
 
-#include <mpi.h>
 #include <nc_tests.h>
 #include <netcdf.h>
+#ifdef TEST_PNETCDF
+#include <mpi.h>
 #include <netcdf_par.h>
+#endif
 
 /* Test everything for classic, 64-bit offset, 64-bit data files. If netcdf-4 is
  * included, that means another whole round of testing. */
@@ -261,10 +263,16 @@ test_one_growing(const char *testfile)
 	 /* Write one record of var data, a single character. */
 #ifdef TEST_PNETCDF
 	 if (nc_open_par(testfile, NC_WRITE|NC_PNETCDF, MPI_COMM_WORLD, MPI_INFO_NULL, &ncid)) ERR;
+	 if (f) {
+             /* in PnetCDF, nc_set_fill() can only be called in define mode */
+             if (nc_redef(ncid)) ERR;
+             if (nc_set_fill(ncid, NC_NOFILL, NULL)) ERR;
+             if (nc_enddef(ncid)) ERR;
+         }
 #else
 	 if (nc_open(testfile, NC_WRITE, &ncid)) ERR;
-#endif
 	 if (f && nc_set_fill(ncid, NC_NOFILL, NULL)) ERR;
+#endif
 	 count[0] = 1;
 	 start[0] = r;
 	 if (nc_put_vara_text(ncid, varid, start, count, &data[r])) ERR;

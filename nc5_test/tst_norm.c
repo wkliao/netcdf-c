@@ -12,7 +12,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <netcdf.h>
+#ifdef TEST_PNETCDF
 #include <netcdf_par.h>
+#endif
 #include <nc_tests.h>
 
 /* The data file we will create. */

@@ -14,7 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netcdf.h>
+#ifdef TEST_PNETCDF
 #include <netcdf_par.h>
+#endif
 
 #define FILE_NAME "tst_misc.nc"
 

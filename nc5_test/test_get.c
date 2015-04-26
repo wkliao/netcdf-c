@@ -5,8 +5,9 @@
  *   $Id: test_get.m4 2785 2014-10-26 05:21:20Z wkliao $
  *********************************************************************/
 
-// #define TEST_PNETCDF
+#ifdef TEST_PNETCDF
 #include <mpi.h>
+#endif
 
 
 #include "tests.h"
