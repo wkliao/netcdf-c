@@ -246,10 +246,14 @@ Then from the top-level netCDF directory:
 Building with Parallel I/O Support {#build_parallel}
 --------------
 
-For parallel I/O to work, HDF5 must be installed with
-`--enable-parallel`, and an MPI library (and related libraries) must be
-made available to the HDF5 configure. This can be accomplished with
-an mpicc wrapper script.
+NetCDF-4 supports parallel I/O feature for accessing files in both classic
+formats (CDF-1, 2, and 5) and HDF5-based formats (NetCDF-4).
+
+To enable parallel I/O support for HDF5-based files, HDF5 must be installed
+with `--enable-parallel`, and an MPI library (and related libraries) must be
+made available to the HDF5 configure. This can be accomplished with an mpicc
+wrapper script.  See /ref build_hdf5_from_source for how to build HDF5 library
+from source.
 
 The following works from the top-level HDF5 source directory to build
 HDF5 with parallel I/O:
@@ -280,14 +284,15 @@ formats, [PnetCDF library](https://parallel-netcdf.github.io) must also be
 installed.  First specify where you want to install PnetCDF in a shell
 variable, for example PNDIR, and build it from the PnetCDF top-level source
 directory. If you would like to build the shared library, include
-`--enable-shared` option at the configure command line.  By default, only a
+`--enable-shared` option at the configure command line.  By default, only the
 static library is built.
 
 ~~~~{.py}
     $ # Build and install PnetCDF
     $ PNDIR=/usr/local
     $ ./configure --prefix=${PNDIR} --with-mpi=/path/to/MPI/compilers
-    $ make check
+    $ make -j4
+    $ make check     # optional
     $ make install   # or sudo make install, if root permissions required
 ~~~~
 
